@@ -1,0 +1,72 @@
+/**
+ * PLAY — design tokens from Figma references (login + home).
+ * Adjust hex values here to stay in sync with design exports.
+ */
+
+:root {
+  color-scheme: dark;
+
+  /* Canvas & surfaces */
+  --play-canvas: #000000;
+  --play-surface: #000000;
+  --play-surface-elevated: #0a0a0a;
+
+  /* Text */
+  --play-foreground: #ffffff;
+  --play-muted: #aeaeae;
+  --play-subtle: #8a8a8a;
+
+  /* Brand (home CTA — design #ae7aff) */
+  --play-primary: #ae7aff;
+  --play-primary-hover: #c4a9ff;
+  --play-primary-foreground: #ffffff;
+
+  /* Lines & focus */
+  --play-border: #ffffff;
+  --play-border-subtle: rgba(255, 255, 255, 0.2);
+  --play-ring: #ae7aff;
+
+  /* UI feedback */
+  --play-danger: #f87171;
+  --play-success: #4ade80;
+
+  /* Typography — home + auth */
+  --font-sans-stack: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Radius (auth inputs / buttons ~ 4–6px) */
+  --play-radius-input: 0.375rem;
+  --play-radius-button: 0.375rem;
+
+  --play-header-height: 4rem;
+  /* Icon-only rail (narrow); increase if you add labels back */
+  --play-sidebar-width: 4.5rem;
+}
+
+@theme inline {
+  --color-play-canvas: var(--play-canvas);
+  --color-play-surface: var(--play-surface);
+  --color-play-surface-elevated: var(--play-surface-elevated);
+
+  --color-play-foreground: var(--play-foreground);
+  --color-play-muted: var(--play-muted);
+  --color-play-subtle: var(--play-subtle);
+
+  --color-play-primary: var(--play-primary);
+  --color-play-primary-hover: var(--play-primary-hover);
+  --color-play-primary-foreground: var(--play-primary-foreground);
+
+  --color-play-border: var(--play-border);
+  --color-play-border-subtle: var(--play-border-subtle);
+  --color-play-ring: var(--play-ring);
+
+  --color-play-danger: var(--play-danger);
+  --color-play-success: var(--play-success);
+
+  --font-sans: var(--font-sans-stack);
+
+  --radius-play-input: var(--play-radius-input);
+  --radius-play-button: var(--play-radius-button);
+
+  --spacing-play-header: var(--play-header-height);
+  --spacing-play-sidebar: var(--play-sidebar-width);
+}

@@ -1,0 +1,28 @@
+@import "tailwindcss";
+@import "./styles/theme.css";
+
+@layer base {
+  html {
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-sans-stack);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--play-canvas);
+    color: var(--play-muted);
+  }
+
+  #root {
+    height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+}
