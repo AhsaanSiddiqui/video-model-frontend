@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { PlayAuthLayout } from '../components/auth/PlayAuthLayout.jsx'
 import { PlayTextField } from '../components/auth/PlayTextField.jsx'
 import { PlayPrimaryButton } from '../components/auth/PlayPrimaryButton.jsx'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { loginUser } from '../api/auth.api.js'
 import { useAuth } from '../context/AuthContext.jsx'
@@ -19,7 +19,13 @@ export default function Login() {
   const [success, setSuccess] = useState("");
   const navigate = useNavigate()
 
-
+  useEffect(() => {
+    localStorage.removeItem('accessToken')
+    localStorage.removeItem('refreshToken')
+    localStorage.removeItem('currentUser')
+    setUser(null)
+    setIsAuthenticated(false)
+  }, [setUser, setIsAuthenticated])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target
@@ -38,23 +44,23 @@ export default function Login() {
       const res = await loginUser(fields)
 
       if (!res.success) {
-        setError(res?.message || 'Login failed. Please try again.');
+        setError(res?.message || 'Login failed. Please try again.')
         return
-      } else {
-        setSuccess(res?.message || 'Login successful.')
       }
 
-      if(res?.data?.accessToken) {
-        // Store token in localStorage (or context/state management)
-        localStorage.setItem('accessToken', res.data.accessToken);
+      setSuccess(res?.message || 'Login successful.')
+
+      const session = res?.data && typeof res.data === 'object' ? res.data : null
+
+      if (session?.accessToken) {
+        localStorage.setItem('accessToken', session.accessToken)
       }
-      if(res?.data?.refreshToken) {
-        // Store token in localStorage (or context/state management) 
-        localStorage.setItem('refreshToken', res.data.refreshToken);
+      if (session?.refreshToken) {
+        localStorage.setItem('refreshToken', session.refreshToken)
       }
-      if (res?.data?.user) {
-        localStorage.setItem('currentUser', JSON.stringify(res.data.user))
-        setUser(res.data.user)
+      if (session?.user) {
+        localStorage.setItem('currentUser', JSON.stringify(session.user))
+        setUser(session.user)
         setIsAuthenticated(true)
       }
 

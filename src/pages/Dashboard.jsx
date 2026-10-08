@@ -1,6 +1,8 @@
 import { useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { UploadVideoModal } from '../components/modals/UploadVideoModal'
+import { UploadAndAttachFilesModal } from '../components/modals/UploadAndAttachFilesModal'
+import { EditVideoModal } from '../components/modals/EditVideoModal'
+import { DeleteVideoModal } from '../components/modals/DeleteVideoModal'
 import { IconEye, IconHeart, IconPencil, IconTrash, IconUserCheck } from '../components/icons/OutlineIcons.jsx'
 
 const STATS = {
@@ -84,6 +86,8 @@ function ToggleSwitch({ checked, onChange, id }) {
 export default function Dashboard() {
   const { user } = useAuth()
   const [uploadOpen, setUploadOpen] = useState(false)
+  const [editVideo, setEditVideo] = useState(null)
+  const [deleteVideo, setDeleteVideo] = useState(null)
   const [rows, setRows] = useState(INITIAL_ROWS)
 
   const firstName = useMemo(() => {
@@ -92,6 +96,22 @@ export default function Dashboard() {
     if (user?.username) return user.username
     return 'Olivia'
   }, [user])
+
+  function handleEditFinish(updates) {
+    if (!editVideo) return
+    setRows((prev) =>
+      prev.map((row) =>
+        row.id === editVideo.id
+          ? { ...row, title: updates.title || row.title, description: updates.description, thumb: updates.thumbnail || row.thumb }
+          : row,
+      ),
+    )
+  }
+
+  function handleDeleteConfirm() {
+    if (!deleteVideo) return
+    setRows((prev) => prev.filter((row) => row.id !== deleteVideo.id))
+  }
 
   function setPublished(id, published) {
     setRows((prev) => prev.map((r) => (r.id === id ? { ...r, published } : r)))
@@ -184,6 +204,7 @@ export default function Dashboard() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         type="button"
+                        onClick={() => setDeleteVideo(row)}
                         className="rounded p-1.5 text-play-foreground transition hover:bg-play-surface-elevated focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring"
                         aria-label={`Delete ${row.title}`}
                       >
@@ -191,6 +212,7 @@ export default function Dashboard() {
                       </button>
                       <button
                         type="button"
+                        onClick={() => setEditVideo(row)}
                         className="rounded p-1.5 text-play-foreground transition hover:bg-play-surface-elevated focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring"
                         aria-label={`Edit ${row.title}`}
                       >
@@ -205,7 +227,19 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <UploadVideoModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <UploadAndAttachFilesModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <EditVideoModal
+        open={!!editVideo}
+        video={editVideo}
+        onClose={() => setEditVideo(null)}
+        onFinish={handleEditFinish}
+      />
+      <DeleteVideoModal
+        open={!!deleteVideo}
+        videoTitle={deleteVideo?.title}
+        onClose={() => setDeleteVideo(null)}
+        onConfirm={handleDeleteConfirm}
+      />
     </div>
   )
 }

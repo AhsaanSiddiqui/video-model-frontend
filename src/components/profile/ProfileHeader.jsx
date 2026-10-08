@@ -1,9 +1,26 @@
+import { useState } from 'react'
 import { IconUserPlus } from '../icons/OutlineIcons.jsx'
+import { CropHeaderImageModal } from '../modals/CropHeaderImageModal.jsx'
 
 export function ProfileHeader({ profile, isOwner }) {
+  const [cropOpen, setCropOpen] = useState(false)
+  const [bannerStyle, setBannerStyle] = useState({
+    background: 'linear-gradient(to right, #d946ef, #bae6fd, #22d3ee)',
+  })
+
   return (
     <>
-      <div className="h-32 rounded-sm bg-linear-to-r from-fuchsia-500 via-sky-200 to-cyan-400" />
+      <button
+        type="button"
+        onClick={() => isOwner && setCropOpen(true)}
+        className={[
+          'h-32 w-full rounded-sm',
+          isOwner ? 'cursor-pointer transition hover:opacity-90' : 'cursor-default',
+        ].join(' ')}
+        style={bannerStyle}
+        aria-label={isOwner ? 'Edit header image' : undefined}
+        disabled={!isOwner}
+      />
       <section className="border-b border-play-border-subtle px-3 py-5 sm:px-4">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
@@ -39,6 +56,12 @@ export function ProfileHeader({ profile, isOwner }) {
           )}
         </div>
       </section>
+
+      <CropHeaderImageModal
+        open={cropOpen}
+        onClose={() => setCropOpen(false)}
+        onSave={({ gradient }) => setBannerStyle({ background: gradient })}
+      />
     </>
   )
 }

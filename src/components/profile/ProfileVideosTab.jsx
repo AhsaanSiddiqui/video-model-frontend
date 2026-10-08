@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom'
 import { IconPlayFill } from '../icons/OutlineIcons.jsx'
 
 export function ProfileVideosTab({ videos, onCreateVideo, canCreate = false }) {
@@ -31,21 +32,27 @@ export function ProfileVideosTab({ videos, onCreateVideo, canCreate = false }) {
   return (
     <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
       {videos.map((video) => (
-        <article key={video.id} className="group cursor-pointer">
-          <div className="aspect-video overflow-hidden border border-play-border-subtle">
-            <img
-              src={video.thumbnail}
-              alt=""
-              className="h-full w-full object-cover transition group-hover:opacity-90"
-            />
-          </div>
-          <h3 className="mt-2 line-clamp-2 text-lg font-semibold leading-snug text-play-foreground">
-            {video.title}
-          </h3>
-          <p className="mt-1 text-sm text-play-muted">
-            {video.views} • {video.uploadedAgo}
-          </p>
-        </article>
+        <Link
+          key={video.id}
+          to={`/video/${video.id}`}
+          className="group block no-underline focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring"
+        >
+          <article className="cursor-pointer">
+            <div className="aspect-video overflow-hidden border border-play-border-subtle">
+              <img
+                src={video.thumbnail}
+                alt=""
+                className="h-full w-full object-cover transition group-hover:opacity-90"
+              />
+            </div>
+            <h3 className="mt-2 line-clamp-2 text-lg font-semibold leading-snug text-play-foreground">
+              {video.title}
+            </h3>
+            <p className="mt-1 text-sm text-play-muted">
+              {video.views} Views • {video.uploadedAgo}
+            </p>
+          </article>
+        </Link>
       ))}
     </div>
   )

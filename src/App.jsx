@@ -16,6 +16,7 @@ import Signup from './pages/Signup.jsx'
 import ForgotPassword from './pages/ForgotPassword.jsx'
 import ResetPassword from './pages/ResetPassword.jsx'
 import VideoDetails from './pages/VideoDetails.jsx'
+import Channel from './pages/Channel.jsx'
 import Dashboard from './pages/Dashboard.jsx'
 
 export default function App() {
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="support" element={<Support />} />
         <Route path="settings" element={<Settings />} />
         <Route path="profile" element={<Profile />} />
+        <Route path="c/:username" element={<Channel />} />
         <Route path="playlist/:playlistId" element={<PlaylistDetails />} />
         <Route path="change-password" element={<ChangePassword />} />
         <Route path="video/:videoId" element={<VideoDetails />} />

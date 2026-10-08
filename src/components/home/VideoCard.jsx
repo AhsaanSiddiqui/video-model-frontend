@@ -1,18 +1,21 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 /**
  * Home grid card — 16:9 thumb, avatar, title (2 lines), views • time, channel.
- * Optional `id` wraps the card in a link to `/video/:id`.
+ * Optional `id` navigates to `/video/:id` on card click.
  */
 export default function VideoCard({
   id,
   title,
   channel,
+  ownerUsername,
   views,
   uploadedAgo,
   thumbnail,
   avatar,
 }) {
+  const navigate = useNavigate()
+
   const body = (
     <>
       <div className="aspect-video w-full overflow-hidden bg-play-surface-elevated">
@@ -35,7 +38,19 @@ export default function VideoCard({
           <p className="mt-1 text-xs text-play-muted">
             {views} Views • {uploadedAgo}
           </p>
-          <p className="mt-0.5 text-xs text-play-muted">{channel}</p>
+          <p className="mt-0.5 text-xs text-play-muted">
+            {ownerUsername ? (
+              <Link
+                to={`/c/${ownerUsername}`}
+                onClick={(e) => e.stopPropagation()}
+                className="hover:text-play-foreground hover:underline"
+              >
+                {channel}
+              </Link>
+            ) : (
+              channel
+            )}
+          </p>
         </div>
       </div>
     </>
@@ -43,12 +58,20 @@ export default function VideoCard({
 
   if (id) {
     return (
-      <Link
-        to={`/video/${id}`}
+      <article
+        role="link"
+        tabIndex={0}
+        onClick={() => navigate(`/video/${id}`)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            navigate(`/video/${id}`)
+          }
+        }}
         className="group block cursor-pointer no-underline focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring focus-visible:ring-offset-2 focus-visible:ring-offset-play-canvas"
       >
         {body}
-      </Link>
+      </article>
     )
   }
 
