@@ -6,6 +6,11 @@ export function RelatedVideoList({ videos }) {
       <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-play-muted">
         Up next
       </h2>
+      {!videos.length ? (
+        <p className="border-t border-play-border-subtle pt-3 text-sm text-play-muted">
+          No other videos yet.
+        </p>
+      ) : null}
       <ul className="divide-y divide-play-border-subtle border-t border-play-border-subtle">
         {videos.map((v) => (
           <li key={v.id} className="py-3 first:pt-3">
