@@ -3,7 +3,7 @@ import { PlayAuthLayout } from '../components/auth/PlayAuthLayout.jsx'
 import { PlayTextField } from '../components/auth/PlayTextField.jsx'
 import { PlayPrimaryButton } from '../components/auth/PlayPrimaryButton.jsx'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { loginUser } from '../api/auth.api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 
@@ -18,6 +18,9 @@ export default function Login() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const navigate = useNavigate()
+  const location = useLocation()
+  // Set when the user was sent here because their session expired
+  const redirectTo = location.state?.from || '/'
 
   useEffect(() => {
     localStorage.removeItem('accessToken')
@@ -65,7 +68,7 @@ export default function Login() {
       }
 
       setTimeout(() => {
-        navigate('/')
+        navigate(redirectTo, { replace: true })
       })
 
     } catch (err) {

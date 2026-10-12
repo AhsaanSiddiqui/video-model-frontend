@@ -1,4 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { AUTH_EXPIRED_EVENT } from '../api/axios.js'
 
 const AuthContext = createContext(null)
 
@@ -35,6 +37,22 @@ export function AuthProvider({ children }) {
     setUser(null)
     setIsAuthenticated(false)
   }, [])
+
+  const navigate = useNavigate()
+
+  // Session couldn't be renewed (refresh token expired or invalid): log out and go to login
+  useEffect(() => {
+    function handleAuthExpired() {
+      logout()
+      const { pathname, search } = window.location
+      if (pathname !== '/login') {
+        navigate('/login', { replace: true, state: { from: pathname + search } })
+      }
+    }
+
+    window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired)
+    return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired)
+  }, [logout, navigate])
 
   const value = useMemo(
     () => ({

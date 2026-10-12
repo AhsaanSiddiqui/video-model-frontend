@@ -12,10 +12,39 @@ function isPublicAuthRequest(url = '') {
     || /\/users\/reset-password\//.test(url);
 }
 
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api/v1';
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8001/api/v1',
+  baseURL: API_BASE_URL,
   withCredentials: true,
 });
+
+// Fired when the session can't be renewed; AuthProvider logs out and redirects to /login.
+export const AUTH_EXPIRED_EVENT = 'auth:expired';
+
+// Shared so that several requests failing at once trigger only one refresh call.
+let refreshPromise = null;
+
+async function refreshAccessToken() {
+  const refreshToken = localStorage.getItem('refreshToken');
+  if (!refreshToken) throw new Error('No refresh token');
+
+  // Plain axios (not `api`) so this request doesn't go through the interceptors below
+  const response = await axios.post(
+    `${API_BASE_URL}/users/refresh-token`,
+    { refreshToken },
+    { withCredentials: true },
+  );
+
+  const session = response.data?.data;
+  if (!session?.accessToken) throw new Error('Refresh failed');
+
+  localStorage.setItem('accessToken', session.accessToken);
+  if (session.refreshToken) {
+    localStorage.setItem('refreshToken', session.refreshToken);
+  }
+  return session.accessToken;
+}
 
 api.interceptors.request.use((config) => {
   if (isPublicAuthRequest(config.url)) {
@@ -28,5 +57,36 @@ api.interceptors.request.use((config) => {
   }
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+
+    if (
+      error.response?.status !== 401 ||
+      !original ||
+      original._retry ||
+      isPublicAuthRequest(original.url)
+    ) {
+      return Promise.reject(error);
+    }
+
+    original._retry = true;
+
+    try {
+      refreshPromise ??= refreshAccessToken().finally(() => {
+        refreshPromise = null;
+      });
+      const accessToken = await refreshPromise;
+
+      original.headers.Authorization = `Bearer ${accessToken}`;
+      return api(original);
+    } catch {
+      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+      return Promise.reject(error);
+    }
+  },
+);
 
 export default api;
