@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import {
   IconBookmark,
   IconChevronDown,
+  IconThumbsDown,
   IconThumbsUp,
 } from '../icons/OutlineIcons.jsx'
 import { VideoMoreMenu } from './VideoMoreMenu.jsx'
@@ -14,6 +15,7 @@ export function VideoMetadataPanel({
   likePending = false,
   subscribePending = false,
   onToggleLike,
+  onToggleDislike,
   onToggleSubscribe,
 }) {
   const [descOpen, setDescOpen] = useState(false)
@@ -32,20 +34,34 @@ export function VideoMetadataPanel({
         </div>
 
         <div className="relative z-30 flex flex-wrap items-center gap-2 sm:shrink-0 sm:justify-end">
-          <button
-            type="button"
-            onClick={onToggleLike}
-            disabled={likePending}
-            aria-pressed={video.isLiked}
-            className={`flex items-center gap-1.5 rounded-full border px-4 py-2 text-sm hover:bg-white/5 disabled:opacity-60 ${
-              video.isLiked
-                ? 'border-play-primary text-play-primary'
-                : 'border-play-border-subtle bg-play-surface-elevated/80 text-play-foreground'
-            }`}
-          >
-            <IconThumbsUp className="h-4! w-4!" />
-            <span>{video.likes.toLocaleString()}</span>
-          </button>
+          <div className="flex items-center rounded-full border border-play-border-subtle bg-play-surface-elevated/80">
+            <button
+              type="button"
+              onClick={onToggleLike}
+              disabled={likePending}
+              aria-pressed={video.isLiked}
+              aria-label="Like"
+              className={`flex items-center gap-1.5 rounded-l-full border-r border-play-border-subtle px-3 py-2 text-sm hover:bg-white/5 disabled:opacity-60 ${
+                video.isLiked ? 'text-play-primary' : 'text-play-foreground'
+              }`}
+            >
+              <IconThumbsUp className="h-4! w-4!" />
+              <span>{video.likes.toLocaleString()}</span>
+            </button>
+            <button
+              type="button"
+              onClick={onToggleDislike}
+              disabled={likePending}
+              aria-pressed={video.isDisliked}
+              aria-label="Dislike"
+              className={`flex items-center gap-1.5 rounded-r-full px-3 py-2 text-sm hover:bg-white/5 disabled:opacity-60 ${
+                video.isDisliked ? 'text-play-primary' : 'text-play-foreground'
+              }`}
+            >
+              <IconThumbsDown className="h-4! w-4!" />
+              <span>{video.dislikes.toLocaleString()}</span>
+            </button>
+          </div>
           <button
             type="button"
             onClick={() => setPlaylistModalOpen(true)}
@@ -111,7 +127,11 @@ export function VideoMetadataPanel({
         </button>
       </div>
 
-      <PlaylistModal open={playlistModalOpen} onClose={() => setPlaylistModalOpen(false)} />
+      <PlaylistModal
+        open={playlistModalOpen}
+        videoId={video.id}
+        onClose={() => setPlaylistModalOpen(false)}
+      />
     </section>
   )
 }

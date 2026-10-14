@@ -53,3 +53,31 @@ export async function addComment(videoId, content) {
     }
   }
 }
+
+export async function updateComment(commentId, content) {
+  try {
+    const response = await api.patch(`/comments/c/${commentId}`, { content })
+    return {
+      success: true,
+      comment: unwrapPayload(response),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to update comment',
+      comment: null,
+    }
+  }
+}
+
+export async function deleteComment(commentId) {
+  try {
+    await api.delete(`/comments/c/${commentId}`)
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to delete comment',
+    }
+  }
+}

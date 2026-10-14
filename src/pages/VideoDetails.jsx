@@ -6,8 +6,13 @@ import { CommentsPanel } from '../components/video/CommentsPanel.jsx'
 import { RelatedVideoList } from '../components/video/RelatedVideoList.jsx'
 import { NoVideosFound } from '../components/empty/NoVideosFound.jsx'
 import { fetchVideoById, fetchVideos } from '../api/video.api.js'
-import { addComment, fetchVideoComments } from '../api/comment.api.js'
-import { toggleVideoLike } from '../api/like.api.js'
+import {
+  addComment,
+  deleteComment,
+  fetchVideoComments,
+  updateComment,
+} from '../api/comment.api.js'
+import { toggleCommentLike, toggleVideoDislike, toggleVideoLike } from '../api/like.api.js'
 import { toggleSubscription } from '../api/subscription.api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { formatTimeAgo, formatViews, mapVideoToCard } from '../utils/videoFormat.js'
@@ -28,7 +33,9 @@ function mapVideoToWatch(video) {
     videoSrc: video?.videoFile,
     posterSrc: video?.thumbnail,
     likes: video?.likesCount ?? 0,
+    dislikes: video?.dislikesCount ?? 0,
     isLiked: Boolean(video?.isLiked),
+    isDisliked: Boolean(video?.isDisliked),
     isSubscribed: Boolean(video?.isSubscribed),
     subscribersCount: video?.subscribersCount ?? 0,
     channel: {
@@ -48,6 +55,12 @@ function mapComment(comment) {
 
   return {
     id: comment?._id,
+    ownerId: owner._id,
+    likes: comment?.likesCount ?? 0,
+    isLiked: Boolean(comment?.isLiked),
+    edited: Boolean(
+      comment?.updatedAt && comment?.createdAt && comment.updatedAt !== comment.createdAt,
+    ),
     author: owner.fullName || owner.username || 'Unknown user',
     handle: owner.username,
     avatar:
@@ -138,23 +151,39 @@ export default function VideoDetails() {
     loadRelated()
   }, [isAuthenticated, loadVideo, loadComments, loadRelated])
 
-  async function handleToggleLike() {
+  // type: 'like' | 'dislike'. Same reaction again removes it; the other one switches.
+  async function handleReaction(type) {
     if (!video || likePending) return
     setLikePending(true)
     setActionError('')
 
-    // optimistic update, rolled back if the request fails
+    // optimistic update, then replaced with the server's counts
     const previous = video
-    setVideo((v) => ({
-      ...v,
-      isLiked: !v.isLiked,
-      likes: v.likes + (v.isLiked ? -1 : 1),
-    }))
+    setVideo((v) => {
+      const current = v.isLiked ? 'like' : v.isDisliked ? 'dislike' : null
+      const next = current === type ? null : type
+      return {
+        ...v,
+        isLiked: next === 'like',
+        isDisliked: next === 'dislike',
+        likes: v.likes + (next === 'like' ? 1 : 0) - (current === 'like' ? 1 : 0),
+        dislikes: v.dislikes + (next === 'dislike' ? 1 : 0) - (current === 'dislike' ? 1 : 0),
+      }
+    })
 
-    const result = await toggleVideoLike(video.id)
+    const toggle = type === 'like' ? toggleVideoLike : toggleVideoDislike
+    const result = await toggle(video.id)
     if (!result.success) {
       setVideo(previous)
       setActionError(result.message)
+    } else if (typeof result.likesCount === 'number') {
+      setVideo((v) => ({
+        ...v,
+        isLiked: result.reaction === 'like',
+        isDisliked: result.reaction === 'dislike',
+        likes: result.likesCount,
+        dislikes: result.dislikesCount ?? v.dislikes,
+      }))
     }
     setLikePending(false)
   }
@@ -186,6 +215,47 @@ export default function VideoDetails() {
     // newest comments come first, so jump back to page 1 to show it
     await loadComments(1)
     return result
+  }
+
+  function patchComment(commentId, changes) {
+    setComments((prev) => ({
+      ...prev,
+      items: prev.items.map((c) => (c.id === commentId ? { ...c, ...changes } : c)),
+    }))
+  }
+
+  async function handleEditComment(commentId, content) {
+    const result = await updateComment(commentId, content)
+    if (result.success) {
+      patchComment(commentId, { body: result.comment?.content ?? content, edited: true })
+    }
+    return result
+  }
+
+  async function handleDeleteComment(commentId) {
+    const result = await deleteComment(commentId)
+    if (!result.success) return result
+
+    // stay on the same page unless it was the last comment on it
+    const page =
+      comments.items.length === 1 && comments.page > 1 ? comments.page - 1 : comments.page
+    await loadComments(page)
+    return result
+  }
+
+  async function handleToggleCommentLike(commentId) {
+    const comment = comments.items.find((c) => c.id === commentId)
+    if (!comment) return
+
+    patchComment(commentId, {
+      isLiked: !comment.isLiked,
+      likes: comment.likes + (comment.isLiked ? -1 : 1),
+    })
+    const result = await toggleCommentLike(commentId)
+    if (!result.success) {
+      patchComment(commentId, { isLiked: comment.isLiked, likes: comment.likes })
+      setActionError(result.message)
+    }
   }
 
   if (!isAuthenticated) {
@@ -261,7 +331,8 @@ export default function VideoDetails() {
           isOwner={isOwner}
           likePending={likePending}
           subscribePending={subscribePending}
-          onToggleLike={handleToggleLike}
+          onToggleLike={() => handleReaction('like')}
+          onToggleDislike={() => handleReaction('dislike')}
           onToggleSubscribe={handleToggleSubscribe}
         />
 
@@ -269,7 +340,11 @@ export default function VideoDetails() {
           comments={comments}
           loading={commentsLoading}
           error={commentsError}
+          currentUserId={user?._id}
           onAddComment={handleAddComment}
+          onEditComment={handleEditComment}
+          onDeleteComment={handleDeleteComment}
+          onToggleCommentLike={handleToggleCommentLike}
           onPageChange={loadComments}
         />
       </div>
