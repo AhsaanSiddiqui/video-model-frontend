@@ -41,6 +41,21 @@ export function formatTimeAgo(dateInput) {
   return `${years} year${years === 1 ? '' : 's'} ago`
 }
 
+export function mapPlaylistCard(playlist) {
+  const videos = Array.isArray(playlist?.videos) ? playlist.videos : []
+  const populated = videos.filter((video) => video && typeof video === 'object' && video.thumbnail)
+  const cover = populated[0]
+
+  return {
+    id: playlist?._id ?? playlist?.id,
+    title: playlist?.name || playlist?.title || 'Untitled playlist',
+    thumbnail: cover?.thumbnail || '',
+    videos: `${videos.length} video${videos.length === 1 ? '' : 's'}`,
+    views: `${formatViews(populated.reduce((sum, video) => sum + (Number(video.views) || 0), 0))} Views`,
+    uploadedAgo: formatTimeAgo(playlist?.updatedAt || playlist?.createdAt),
+  }
+}
+
 export function mapVideoToCard(video) {
   const owner = video?.owner ?? {}
 

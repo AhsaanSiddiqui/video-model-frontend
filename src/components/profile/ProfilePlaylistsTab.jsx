@@ -10,7 +10,7 @@ export function ProfilePlaylistsTab({ playlists }) {
         </div>
         <h3 className="text-3xl font-semibold text-play-foreground">No libraries created</h3>
         <p className="mt-2 max-w-md text-xl leading-relaxed text-play-muted">
-          there are no playlists inside this library
+          Save a video to a playlist and it will show up here.
         </p>
       </div>
     )
@@ -21,12 +21,16 @@ export function ProfilePlaylistsTab({ playlists }) {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {playlists.map((playlist) => (
           <Link key={playlist.id} to={`/playlist/${playlist.id}`} className="group block cursor-pointer">
-            <div className="relative aspect-video overflow-hidden border border-play-border-subtle">
-              <img
-                src={playlist.thumbnail}
-                alt=""
-                className="h-full w-full object-cover transition group-hover:opacity-90"
-              />
+            <div className="relative aspect-video overflow-hidden border border-play-border-subtle bg-play-surface-elevated">
+              {playlist.thumbnail ? (
+                <img
+                  src={playlist.thumbnail}
+                  alt=""
+                  className="h-full w-full object-cover transition group-hover:opacity-90"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-play-muted">No videos yet</div>
+              )}
               <span className="absolute bottom-2 right-2 bg-black/70 px-2 py-1 text-lg text-play-foreground">
                 {playlist.videos}
               </span>

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { fetchVideos } from '../api/video.api.js'
-import { mapVideoToCard } from '../utils/videoFormat.js'
+import { fetchUserPlaylists, fetchPlaylistById } from '../api/playlist.api.js'
+import { mapPlaylistCard, mapVideoToCard } from '../utils/videoFormat.js'
 import { ProfileHeader } from '../components/profile/ProfileHeader.jsx'
 import { ProfileTabs } from '../components/profile/ProfileTabs.jsx'
 import { ProfileVideosTab } from '../components/profile/ProfileVideosTab.jsx'
@@ -13,7 +14,6 @@ import { UploadVideoModal } from '../components/modals/UploadVideoModal.jsx'
 import {
   PROFILE_TABS,
   profileFollowing,
-  profilePlaylists,
   profileTweets,
 } from '../data/profileMock.js'
 
@@ -23,6 +23,9 @@ export default function Profile() {
   const [uploadModalOpen, setUploadModalOpen] = useState(false)
   const [channelVideos, setChannelVideos] = useState([])
   const [videosLoading, setVideosLoading] = useState(true)
+  const [playlists, setPlaylists] = useState([])
+  const [playlistsLoading, setPlaylistsLoading] = useState(false)
+  const [playlistsError, setPlaylistsError] = useState('')
 
   const profile = useMemo(
     () => ({
@@ -56,12 +59,43 @@ export default function Profile() {
     setVideosLoading(false)
   }, [user?._id])
 
+  const loadPlaylists = useCallback(async () => {
+    if (!user?._id) {
+      setPlaylists([])
+      setPlaylistsLoading(false)
+      return
+    }
+
+    setPlaylistsLoading(true)
+    setPlaylistsError('')
+    const result = await fetchUserPlaylists(user._id)
+    if (!result.success) {
+      setPlaylists([])
+      setPlaylistsError(result.message)
+    } else {
+      const detailed = await Promise.all(
+        result.playlists.map(async (playlist) => {
+          const videos = playlist.videos ?? []
+          const needsCover = videos.some((video) => !video?.thumbnail)
+          if (!needsCover) return playlist
+          const full = await fetchPlaylistById(playlist._id)
+          return full.success && full.playlist ? full.playlist : playlist
+        }),
+      )
+      setPlaylists(detailed.map(mapPlaylistCard))
+    }
+    setPlaylistsLoading(false)
+  }, [user?._id])
+
   useEffect(() => {
     if (!isAuthenticated || !user) return
     if (activeTab === 'Videos') {
       loadChannelVideos()
     }
-  }, [activeTab, isAuthenticated, user, loadChannelVideos])
+    if (activeTab === 'Playlist') {
+      loadPlaylists()
+    }
+  }, [activeTab, isAuthenticated, user, loadChannelVideos, loadPlaylists])
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />
@@ -93,7 +127,22 @@ export default function Profile() {
             />
           )
         ) : null}
-        {activeTab === 'Playlist' ? <ProfilePlaylistsTab playlists={profilePlaylists} /> : null}
+        {activeTab === 'Playlist' ? (
+          playlistsLoading ? (
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              {Array.from({ length: 2 }).map((_, index) => (
+                <div key={index} className="animate-pulse">
+                  <div className="aspect-video bg-play-surface-elevated" />
+                  <div className="mt-3 h-5 w-2/3 rounded bg-play-surface-elevated" />
+                </div>
+              ))}
+            </div>
+          ) : playlistsError ? (
+            <p className="py-10 text-center text-play-muted">{playlistsError}</p>
+          ) : (
+            <ProfilePlaylistsTab playlists={playlists} />
+          )
+        ) : null}
         {activeTab === 'Tweets' ? <ProfileTweetsTab tweets={profileTweets} /> : null}
         {activeTab === 'Following' ? <ProfileFollowingTab following={profileFollowing} /> : null}
       </section>

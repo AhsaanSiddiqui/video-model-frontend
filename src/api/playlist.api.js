@@ -44,6 +44,22 @@ async function withGatewayRetry(request) {
   }
 }
 
+export async function fetchPlaylistById(playlistId) {
+  try {
+    const response = await api.get(`/playlists/${playlistId}`)
+    return {
+      success: true,
+      playlist: unwrapPayload(response),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: errorMessage(error, 'Failed to load playlist'),
+      playlist: null,
+    }
+  }
+}
+
 export async function fetchUserPlaylists(userId) {
   try {
     const response = await api.get(`/playlists/user/${userId}`)
