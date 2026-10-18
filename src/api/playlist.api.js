@@ -14,6 +14,36 @@ function unwrapPayload(response) {
   return body?.data ?? body
 }
 
+function errorMessage(error, fallback) {
+  const data = error.response?.data
+
+  if (typeof data?.message === 'string' && data.message.trim()) {
+    return data.message
+  }
+
+  if (typeof data === 'string' && data.trim()) {
+    return data.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 180)
+  }
+
+  if (!error.response) {
+    return 'The server did not respond. Wait a few seconds and try again.'
+  }
+
+  return fallback
+}
+
+async function withGatewayRetry(request) {
+  try {
+    return await request()
+  } catch (error) {
+    const status = error.response?.status
+    const shouldRetry = !error.response || status === 502 || status === 503 || status === 504
+    if (!shouldRetry) throw error
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    return request()
+  }
+}
+
 export async function fetchUserPlaylists(userId) {
   try {
     const response = await api.get(`/playlists/user/${userId}`)
@@ -25,7 +55,7 @@ export async function fetchUserPlaylists(userId) {
   } catch (error) {
     return {
       success: false,
-      message: error.response?.data?.message || 'Failed to load playlists',
+      message: errorMessage(error, 'Failed to load playlists'),
       playlists: [],
     }
   }
@@ -41,32 +71,40 @@ export async function createPlaylist({ name, description = '' }) {
   } catch (error) {
     return {
       success: false,
-      message: error.response?.data?.message || 'Failed to create playlist',
+      message: errorMessage(error, 'Failed to create playlist'),
       playlist: null,
     }
   }
 }
 
 export async function addVideoToPlaylist(videoId, playlistId) {
+  if (!videoId || !playlistId) {
+    return { success: false, message: 'Missing video or playlist.' }
+  }
+
   try {
-    await api.patch(`/playlists/add/${videoId}/${playlistId}`)
+    await withGatewayRetry(() => api.patch(`/playlists/add/${videoId}/${playlistId}`))
     return { success: true }
   } catch (error) {
     return {
       success: false,
-      message: error.response?.data?.message || 'Failed to add video to playlist',
+      message: errorMessage(error, 'Failed to add video to playlist'),
     }
   }
 }
 
 export async function removeVideoFromPlaylist(videoId, playlistId) {
+  if (!videoId || !playlistId) {
+    return { success: false, message: 'Missing video or playlist.' }
+  }
+
   try {
-    await api.patch(`/playlists/remove/${videoId}/${playlistId}`)
+    await withGatewayRetry(() => api.patch(`/playlists/remove/${videoId}/${playlistId}`))
     return { success: true }
   } catch (error) {
     return {
       success: false,
-      message: error.response?.data?.message || 'Failed to remove video from playlist',
+      message: errorMessage(error, 'Failed to remove video from playlist'),
     }
   }
 }
