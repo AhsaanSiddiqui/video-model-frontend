@@ -73,9 +73,9 @@ function ProfileMenu({ user }) {
 
   const label = user.fullName || user.username || 'Account menu'
 
-  function handleLogout() {
+  async function handleLogout() {
     setOpen(false)
-    logout()
+    await logout()
     navigate('/')
   }
 

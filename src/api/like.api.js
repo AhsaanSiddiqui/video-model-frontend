@@ -26,13 +26,32 @@ async function toggleReaction(path, fallbackMessage) {
   }
 }
 
-/** Resolves to { success, reaction: 'like' | 'dislike' | null, likesCount, dislikesCount } */
+export async function fetchLikedVideos() {
+  try {
+    const response = await api.get('/likes/videos')
+    const videos = unwrapPayload(response)
+    return {
+      success: true,
+      videos: Array.isArray(videos) ? videos.filter(Boolean) : [],
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to load liked videos',
+      videos: [],
+    }
+  }
+}
 export function toggleVideoLike(videoId) {
   return toggleReaction(`/likes/toggle/v/${videoId}`, 'Failed to update like')
 }
 
 export function toggleVideoDislike(videoId) {
   return toggleReaction(`/likes/toggle/dislike/v/${videoId}`, 'Failed to update dislike')
+}
+
+export function toggleTweetLike(tweetId) {
+  return toggleReaction(`/likes/toggle/t/${tweetId}`, 'Failed to update like')
 }
 
 export async function toggleCommentLike(commentId) {

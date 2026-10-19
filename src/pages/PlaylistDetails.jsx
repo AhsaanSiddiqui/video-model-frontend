@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react'
-import { Link, Navigate, useParams } from 'react-router-dom'
+import { Link, Navigate, useNavigate, useParams } from 'react-router-dom'
 import { IconChevronDown } from '../components/icons/OutlineIcons.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { fetchPlaylistById, removeVideoFromPlaylist } from '../api/playlist.api.js'
+import { deletePlaylist, fetchPlaylistById, removeVideoFromPlaylist, updatePlaylist } from '../api/playlist.api.js'
 import { formatTimeAgo, mapPlaylistCard, mapVideoToCard } from '../utils/videoFormat.js'
 
 export default function PlaylistDetails() {
   const { isAuthenticated, user } = useAuth()
+  const navigate = useNavigate()
   const { playlistId } = useParams()
   const [playlist, setPlaylist] = useState(null)
   const [videos, setVideos] = useState([])
@@ -14,6 +15,12 @@ export default function PlaylistDetails() {
   const [error, setError] = useState('')
   const [removingId, setRemovingId] = useState(null)
   const [actionError, setActionError] = useState('')
+  const [editing, setEditing] = useState(false)
+  const [name, setName] = useState('')
+  const [description, setDescription] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
     if (!isAuthenticated || !playlistId) return
@@ -65,6 +72,44 @@ export default function PlaylistDetails() {
     setRemovingId(null)
   }
 
+  function startEdit() {
+    setName(playlist?.name || '')
+    setDescription(playlist?.description || '')
+    setEditing(true)
+    setActionError('')
+  }
+
+  async function handleSave(event) {
+    event.preventDefault()
+    const trimmed = name.trim()
+    if (!trimmed || saving) return
+    setSaving(true)
+    setActionError('')
+    const result = await updatePlaylist(playlistId, { name: trimmed, description: description.trim() })
+    if (!result.success) {
+      setActionError(result.message || 'Failed to update playlist')
+    } else {
+      setPlaylist((prev) =>
+        prev ? { ...prev, name: trimmed, description: description.trim() } : prev,
+      )
+      setEditing(false)
+    }
+    setSaving(false)
+  }
+
+  async function handleDelete() {
+    if (deleting) return
+    setDeleting(true)
+    setActionError('')
+    const result = await deletePlaylist(playlistId)
+    if (!result.success) {
+      setActionError(result.message || 'Failed to delete playlist')
+      setDeleting(false)
+      return
+    }
+    navigate('/collection', { replace: true })
+  }
+
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />
   }
@@ -105,17 +150,59 @@ export default function PlaylistDetails() {
   return (
     <div className="mx-auto grid w-full max-w-[1920px] grid-cols-1 gap-6 lg:grid-cols-[1.05fr_1fr]">
       <section>
-        <div className="mb-3 flex justify-end">
+        <div className="mb-3 flex justify-end gap-2">
           {isOwner ? (
-            <button
-              type="button"
-              className="inline-flex items-center gap-2 rounded-play-button bg-play-primary px-4 py-2 text-sm font-semibold text-play-primary-foreground hover:bg-play-primary-hover"
-            >
-              <span aria-hidden>✎</span>
-              Edit
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={editing ? () => setEditing(false) : startEdit}
+                className="inline-flex items-center gap-2 rounded-play-button bg-play-primary px-4 py-2 text-sm font-semibold text-play-primary-foreground hover:bg-play-primary-hover"
+              >
+                <span aria-hidden>✎</span>
+                {editing ? 'Cancel' : 'Edit'}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!confirmDelete) {
+                    setConfirmDelete(true)
+                    return
+                  }
+                  handleDelete()
+                }}
+                disabled={deleting}
+                className="inline-flex items-center gap-2 rounded-play-button border border-play-border-subtle px-4 py-2 text-sm font-semibold text-play-foreground hover:bg-play-surface-elevated disabled:opacity-60"
+              >
+                {deleting ? 'Deleting…' : confirmDelete ? 'Confirm delete' : 'Delete'}
+              </button>
+            </>
           ) : null}
         </div>
+        {editing ? (
+          <form onSubmit={handleSave} className="mb-4 grid gap-3">
+            <input
+              type="text"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              className="w-full rounded-play-input border border-play-border bg-white px-4 py-3 text-sm text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-play-ring"
+            />
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Description"
+              className="w-full resize-none rounded-play-input border border-play-border bg-white px-4 py-3 text-sm text-slate-700 outline-none focus-visible:ring-2 focus-visible:ring-play-ring"
+            />
+            {actionError ? <p className="text-sm text-red-400">{actionError}</p> : null}
+            <button
+              type="submit"
+              disabled={saving || !name.trim()}
+              className="w-fit rounded-play-button bg-play-primary px-4 py-2 text-sm font-semibold text-play-primary-foreground disabled:opacity-50"
+            >
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+          </form>
+        ) : null}
         <article>
           <div className="relative aspect-video overflow-hidden border border-play-border-subtle bg-play-surface-elevated">
             {card.thumbnail ? (

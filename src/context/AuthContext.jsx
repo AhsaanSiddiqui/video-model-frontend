@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { AUTH_EXPIRED_EVENT } from '../api/axios.js'
+import { AUTH_EXPIRED_EVENT, clearManualLogout, markManualLogout } from '../api/axios.js'
+import { logoutUser } from '../api/auth.api.js'
 
 const AuthContext = createContext(null)
 
@@ -16,21 +17,20 @@ function readStoredSession() {
   }
 }
 
+function toStoredUser(nextUser) {
+  const safe = { ...nextUser }
+  delete safe.password
+  delete safe.refreshToken
+  return safe
+}
+
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null)
+  const [user, setUser] = useState(() => readStoredSession())
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
-  const [isAuthenticated, setIsAuthenticated] = useState(false)
+  const [isAuthenticated, setIsAuthenticated] = useState(() => Boolean(readStoredSession()))
 
-  useEffect(() => {
-    const storedUser = readStoredSession()
-    if (storedUser) {
-      setUser(storedUser)
-      setIsAuthenticated(true)
-    }
-  }, [])
-
-  const logout = useCallback(() => {
+  const clearSession = useCallback(() => {
     localStorage.removeItem('accessToken')
     localStorage.removeItem('refreshToken')
     localStorage.removeItem('currentUser')
@@ -38,12 +38,32 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(false)
   }, [])
 
+  const saveUser = useCallback((nextUser) => {
+    if (!nextUser || typeof nextUser !== 'object') return
+    const safe = toStoredUser(nextUser)
+    localStorage.setItem('currentUser', JSON.stringify(safe))
+    setUser(safe)
+    setIsAuthenticated(true)
+  }, [])
+
+  const logout = useCallback(async () => {
+    markManualLogout()
+    try {
+      if (localStorage.getItem('accessToken') || localStorage.getItem('refreshToken')) {
+        await logoutUser()
+      }
+    } finally {
+      clearSession()
+      clearManualLogout()
+    }
+  }, [clearSession])
+
   const navigate = useNavigate()
 
   // Session couldn't be renewed (refresh token expired or invalid): log out and go to login
   useEffect(() => {
     function handleAuthExpired() {
-      logout()
+      clearSession()
       const { pathname, search } = window.location
       if (pathname !== '/login') {
         navigate('/login', { replace: true, state: { from: pathname + search } })
@@ -52,12 +72,13 @@ export function AuthProvider({ children }) {
 
     window.addEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired)
     return () => window.removeEventListener(AUTH_EXPIRED_EVENT, handleAuthExpired)
-  }, [logout, navigate])
+  }, [clearSession, navigate])
 
   const value = useMemo(
     () => ({
       user,
       setUser,
+      saveUser,
       isLoading,
       setIsLoading,
       error,
@@ -66,7 +87,7 @@ export function AuthProvider({ children }) {
       setIsAuthenticated,
       logout,
     }),
-    [user, isLoading, error, isAuthenticated, logout],
+    [user, isLoading, error, isAuthenticated, logout, saveUser],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

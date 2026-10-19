@@ -106,3 +106,99 @@ export async function getCurrentUser() {
     );
   }
 }
+
+function unwrapUser(body) {
+  const data = body?.data
+  const message = body?.message
+  if (data && typeof data === 'object' && (data._id || data.email)) return data
+  if (message && typeof message === 'object' && (message._id || message.email)) return message
+  return null
+}
+
+export async function logoutUser() {
+  try {
+    const response = await api.post('/users/logout')
+    return response.data ?? { success: true }
+  } catch (error) {
+    return (
+      error.response?.data ?? {
+        success: false,
+        message: 'Logout failed',
+      }
+    )
+  }
+}
+
+export async function updateAccountDetails({ fullName, email }) {
+  try {
+    const response = await api.patch('/users/update-account', { fullName, email })
+    return {
+      success: Boolean(response.data?.success),
+      message: typeof response.data?.message === 'string' ? response.data.message : 'Account updated',
+      user: unwrapUser(response.data),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to update account',
+      user: null,
+    }
+  }
+}
+
+export async function updateAvatar(file) {
+  const formData = new FormData()
+  formData.append('avatar', file)
+  try {
+    const response = await api.patch('/users/avatar', formData)
+    return {
+      success: Boolean(response.data?.success),
+      message: typeof response.data?.message === 'string' ? response.data.message : 'Avatar updated',
+      user: unwrapUser(response.data),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to update avatar',
+      user: null,
+    }
+  }
+}
+
+export async function updateCoverImage(file) {
+  const formData = new FormData()
+  formData.append('coverImage', file)
+  try {
+    const response = await api.patch('/users/cover-image', formData)
+    return {
+      success: Boolean(response.data?.success),
+      message: typeof response.data?.message === 'string' ? response.data.message : 'Cover image updated',
+      user: unwrapUser(response.data),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to update cover image',
+      user: null,
+    }
+  }
+}
+
+export async function fetchWatchHistory() {
+  try {
+    const response = await api.get('/users/history')
+    const body = response?.data
+    const videos = Array.isArray(body?.data)
+      ? body.data
+      : Array.isArray(body?.message)
+        ? body.message
+        : []
+    return { success: true, videos: videos.filter(Boolean) }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to load watch history',
+      videos: [],
+    }
+  }
+}

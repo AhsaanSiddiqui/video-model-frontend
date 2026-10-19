@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { settleRequest, trackRequestStart } from './loadingBar.js';
 
 const PUBLIC_AUTH_PATHS = [
   '/users/login',
@@ -24,6 +25,16 @@ export const AUTH_EXPIRED_EVENT = 'auth:expired';
 
 // Shared so that several requests failing at once trigger only one refresh call.
 let refreshPromise = null;
+// A user-started logout should not also redirect through the expired-session handler.
+let manualLogout = false;
+
+export function markManualLogout() {
+  manualLogout = true;
+}
+
+export function clearManualLogout() {
+  manualLogout = false;
+}
 
 async function refreshAccessToken() {
   const refreshToken = localStorage.getItem('refreshToken');
@@ -47,6 +58,11 @@ async function refreshAccessToken() {
 }
 
 api.interceptors.request.use((config) => {
+  if (!config.__loadingTracked) {
+    config.__loadingTracked = true;
+    trackRequestStart();
+  }
+
   if (isPublicAuthRequest(config.url)) {
     return config;
   }
@@ -59,16 +75,20 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    settleRequest(response.config);
+    return response;
+  },
   async (error) => {
     const original = error.config;
+    const willRetry =
+      error.response?.status === 401 &&
+      original &&
+      !original._retry &&
+      !isPublicAuthRequest(original.url);
 
-    if (
-      error.response?.status !== 401 ||
-      !original ||
-      original._retry ||
-      isPublicAuthRequest(original.url)
-    ) {
+    if (!willRetry) {
+      settleRequest(original);
       return Promise.reject(error);
     }
 
@@ -83,7 +103,10 @@ api.interceptors.response.use(
       original.headers.Authorization = `Bearer ${accessToken}`;
       return api(original);
     } catch {
-      window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+      settleRequest(original);
+      if (!manualLogout) {
+        window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+      }
       return Promise.reject(error);
     }
   },
