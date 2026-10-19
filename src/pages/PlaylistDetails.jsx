@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, Navigate, useParams } from 'react-router-dom'
 import { IconChevronDown } from '../components/icons/OutlineIcons.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
-import { fetchPlaylistById } from '../api/playlist.api.js'
+import { fetchPlaylistById, removeVideoFromPlaylist } from '../api/playlist.api.js'
 import { formatTimeAgo, mapPlaylistCard, mapVideoToCard } from '../utils/videoFormat.js'
 
 export default function PlaylistDetails() {
@@ -12,6 +12,8 @@ export default function PlaylistDetails() {
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [removingId, setRemovingId] = useState(null)
+  const [actionError, setActionError] = useState('')
 
   useEffect(() => {
     if (!isAuthenticated || !playlistId) return
@@ -40,6 +42,28 @@ export default function PlaylistDetails() {
       cancelled = true
     }
   }, [isAuthenticated, playlistId])
+
+  async function handleRemove(videoId) {
+    if (!playlistId || removingId) return
+    setRemovingId(videoId)
+    setActionError('')
+
+    const result = await removeVideoFromPlaylist(videoId, playlistId)
+    if (!result.success) {
+      setActionError(result.message || 'Failed to remove video from playlist')
+    } else {
+      setVideos((prev) => prev.filter((video) => video.id !== videoId))
+      setPlaylist((prev) =>
+        prev
+          ? {
+              ...prev,
+              videos: (prev.videos ?? []).filter((video) => String(video?._id ?? video) !== String(videoId)),
+            }
+          : prev,
+      )
+    }
+    setRemovingId(null)
+  }
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />
@@ -135,24 +159,33 @@ export default function PlaylistDetails() {
       </section>
 
       <section className="space-y-2">
+        {actionError ? <p className="text-sm text-red-400">{actionError}</p> : null}
         {videos.length ? (
           videos.map((video) => (
-            <Link
-              key={video.id}
-              to={`/video/${video.id}`}
-              className="flex gap-2 border border-play-border-subtle p-1.5 no-underline"
-            >
-              <img src={video.thumbnail} alt="" className="h-20 w-40 shrink-0 object-cover" />
-              <div className="min-w-0">
-                <h3 className="line-clamp-2 text-md font-semibold leading-tight text-play-foreground">
-                  {video.title}
-                </h3>
-                <p className="mt-1 text-sm text-play-muted">{video.channel}</p>
-                <p className="text-sm text-play-muted">
-                  {video.views} Views • {video.uploadedAgo}
-                </p>
-              </div>
-            </Link>
+            <div key={video.id} className="flex items-center gap-2 border border-play-border-subtle p-1.5">
+              <Link to={`/video/${video.id}`} className="flex min-w-0 flex-1 gap-2 no-underline">
+                <img src={video.thumbnail} alt="" className="h-20 w-40 shrink-0 object-cover" />
+                <div className="min-w-0">
+                  <h3 className="line-clamp-2 text-md font-semibold leading-tight text-play-foreground">
+                    {video.title}
+                  </h3>
+                  <p className="mt-1 text-sm text-play-muted">{video.channel}</p>
+                  <p className="text-sm text-play-muted">
+                    {video.views} Views • {video.uploadedAgo}
+                  </p>
+                </div>
+              </Link>
+              {isOwner ? (
+                <button
+                  type="button"
+                  onClick={() => handleRemove(video.id)}
+                  disabled={removingId === video.id}
+                  className="shrink-0 rounded-play-button border border-play-border-subtle px-3 py-2 text-sm font-medium text-play-foreground hover:bg-play-surface-elevated disabled:opacity-60"
+                >
+                  {removingId === video.id ? 'Removing…' : 'Remove'}
+                </button>
+              ) : null}
+            </div>
           ))
         ) : (
           <p className="py-8 text-center text-play-muted">No videos saved in this playlist yet.</p>
