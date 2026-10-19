@@ -4,6 +4,7 @@ import { IconChevronDown } from '../components/icons/OutlineIcons.jsx'
 import { useAuth } from '../context/AuthContext.jsx'
 import { deletePlaylist, fetchPlaylistById, removeVideoFromPlaylist, updatePlaylist } from '../api/playlist.api.js'
 import { formatTimeAgo, mapPlaylistCard, mapVideoToCard } from '../utils/videoFormat.js'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 export default function PlaylistDetails() {
   const { isAuthenticated, user } = useAuth()
@@ -114,18 +115,7 @@ export default function PlaylistDetails() {
     return <Navigate to="/login" replace />
   }
 
-  if (loading) {
-    return (
-      <div className="mx-auto grid w-full max-w-[1920px] animate-pulse grid-cols-1 gap-6 lg:grid-cols-[1.05fr_1fr]">
-        <div className="aspect-video bg-play-surface-elevated" />
-        <div className="space-y-2">
-          {Array.from({ length: 4 }).map((_, index) => (
-            <div key={index} className="h-24 bg-play-surface-elevated" />
-          ))}
-        </div>
-      </div>
-    )
-  }
+  if (loading) return <LoadingSpinner />
 
   if (error || !playlist) {
     return (

@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { createPlaylist, fetchUserPlaylists } from '../api/playlist.api.js'
 import { mapPlaylistCard } from '../utils/videoFormat.js'
 import { ProfilePlaylistsTab } from '../components/profile/ProfilePlaylistsTab.jsx'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 export default function CollectionPage() {
   const { isAuthenticated, user } = useAuth()
@@ -90,13 +91,7 @@ export default function CollectionPage() {
       {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
 
       <div className="mt-8">
-        {loading ? (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {Array.from({ length: 2 }).map((_, index) => (
-              <div key={index} className="aspect-video animate-pulse bg-play-surface-elevated" />
-            ))}
-          </div>
-        ) : error && !playlists.length ? null : (
+        {loading ? <LoadingSpinner layout="section" /> : error && !playlists.length ? null : (
           <ProfilePlaylistsTab playlists={playlists} />
         )}
       </div>

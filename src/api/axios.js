@@ -1,5 +1,4 @@
 import axios from 'axios';
-import { settleRequest, trackRequestStart } from './loadingBar.js';
 
 const PUBLIC_AUTH_PATHS = [
   '/users/login',
@@ -58,11 +57,6 @@ async function refreshAccessToken() {
 }
 
 api.interceptors.request.use((config) => {
-  if (!config.__loadingTracked) {
-    config.__loadingTracked = true;
-    trackRequestStart();
-  }
-
   if (isPublicAuthRequest(config.url)) {
     return config;
   }
@@ -75,20 +69,16 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => {
-    settleRequest(response.config);
-    return response;
-  },
+  (response) => response,
   async (error) => {
     const original = error.config;
-    const willRetry =
-      error.response?.status === 401 &&
-      original &&
-      !original._retry &&
-      !isPublicAuthRequest(original.url);
 
-    if (!willRetry) {
-      settleRequest(original);
+    if (
+      error.response?.status !== 401 ||
+      !original ||
+      original._retry ||
+      isPublicAuthRequest(original.url)
+    ) {
       return Promise.reject(error);
     }
 
@@ -103,7 +93,6 @@ api.interceptors.response.use(
       original.headers.Authorization = `Bearer ${accessToken}`;
       return api(original);
     } catch {
-      settleRequest(original);
       if (!manualLogout) {
         window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
       }

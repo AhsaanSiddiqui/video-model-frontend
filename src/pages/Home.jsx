@@ -4,6 +4,7 @@ import { NoVideosFound } from '../components/empty/NoVideosFound.jsx'
 import { fetchVideos } from '../api/video.api.js'
 import { mapVideoToCard } from '../utils/videoFormat.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 export default function Home() {
   const { isAuthenticated } = useAuth()
@@ -47,22 +48,7 @@ export default function Home() {
   }
 
   if (loading) {
-    return (
-      <div className="mx-auto grid max-w-[1920px] grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 8 }).map((_, index) => (
-          <div key={index} className="animate-pulse">
-            <div className="aspect-video rounded-sm bg-play-surface-elevated" />
-            <div className="mt-3 flex gap-3">
-              <div className="size-9 rounded-full bg-play-surface-elevated" />
-              <div className="flex-1 space-y-2">
-                <div className="h-4 rounded bg-play-surface-elevated" />
-                <div className="h-3 w-2/3 rounded bg-play-surface-elevated" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    )
+    return <LoadingSpinner />
   }
 
   if (error) {

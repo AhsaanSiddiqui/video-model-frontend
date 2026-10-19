@@ -7,6 +7,7 @@ import { UploadVideoModal } from '../components/modals/UploadVideoModal'
 import { EditVideoModal } from '../components/modals/EditVideoModal'
 import { DeleteVideoModal } from '../components/modals/DeleteVideoModal'
 import { IconEye, IconHeart, IconPencil, IconTrash, IconUserCheck } from '../components/icons/OutlineIcons.jsx'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 function formatCount(n) {
   return Number(n || 0).toLocaleString('en-US')
@@ -218,8 +219,8 @@ export default function Dashboard() {
             <tbody>
               {loading ? (
                 <tr>
-                  <td colSpan={6} className="px-3 py-10 text-center text-play-muted">
-                    Loading your videos…
+                  <td colSpan={6} className="px-3 py-4">
+                    <LoadingSpinner layout="section" />
                   </td>
                 </tr>
               ) : rows.length ? (

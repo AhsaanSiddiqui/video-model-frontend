@@ -4,6 +4,7 @@ import { PlayAuthLayout } from '../components/auth/PlayAuthLayout.jsx'
 import { PlayTextField } from '../components/auth/PlayTextField.jsx'
 import { PlayPrimaryButton } from '../components/auth/PlayPrimaryButton.jsx'
 import { forgotPassword } from '../api/auth.api.js'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('')
@@ -83,7 +84,14 @@ export default function ForgotPassword() {
           onChange={(e) => setEmail(e.target.value)}
         />
         <PlayPrimaryButton disabled={loading}>
-          {loading ? 'Sending…' : 'Send reset link'}
+          {loading ? (
+            <span className="inline-flex items-center justify-center gap-2">
+              <LoadingSpinner layout="inline" />
+              Sending…
+            </span>
+          ) : (
+            'Send reset link'
+          )}
         </PlayPrimaryButton>
         <p className="text-center text-sm text-play-muted">
           <Link

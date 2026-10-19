@@ -5,6 +5,7 @@ import { NoVideosFound } from '../components/empty/NoVideosFound.jsx'
 import { fetchLikedVideos } from '../api/like.api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { mapVideoToCard } from '../utils/videoFormat.js'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 export default function LikedVideos() {
   const { isAuthenticated } = useAuth()
@@ -37,15 +38,7 @@ export default function LikedVideos() {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
 
-  if (loading) {
-    return (
-      <div className="mx-auto grid max-w-[1920px] grid-cols-1 gap-x-4 gap-y-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <div key={index} className="aspect-video animate-pulse bg-play-surface-elevated" />
-        ))}
-      </div>
-    )
-  }
+  if (loading) return <LoadingSpinner />
 
   if (error) {
     return <NoVideosFound title="Could not load liked videos" description={error} />

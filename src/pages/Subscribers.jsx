@@ -3,6 +3,7 @@ import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { fetchSubscribedChannels, toggleSubscription } from '../api/subscription.api.js'
 import { NoVideosFound } from '../components/empty/NoVideosFound.jsx'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 const DEFAULT_AVATAR = 'https://i.pravatar.cc/80?u=play'
 
@@ -51,15 +52,7 @@ export default function Subscribers() {
 
   if (!isAuthenticated) return <Navigate to="/login" replace />
 
-  if (loading) {
-    return (
-      <ul className="mx-auto max-w-3xl space-y-3">
-        {Array.from({ length: 4 }).map((_, index) => (
-          <li key={index} className="h-16 animate-pulse rounded bg-play-surface-elevated" />
-        ))}
-      </ul>
-    )
-  }
+  if (loading) return <LoadingSpinner />
 
   if (error && !channels.length) {
     return <NoVideosFound title="Could not load subscriptions" description={error} />

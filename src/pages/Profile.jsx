@@ -14,6 +14,7 @@ import { ProfileTweetsTab } from '../components/profile/ProfileTweetsTab.jsx'
 import { ProfileFollowingTab } from '../components/profile/ProfileFollowingTab.jsx'
 import { UploadVideoModal } from '../components/modals/UploadVideoModal.jsx'
 import { PROFILE_TABS, profileFollowing } from '../data/profileMock.js'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 function mapTweet(tweet) {
   const owner = tweet?.owner && typeof tweet.owner === 'object' ? tweet.owner : {}
@@ -186,14 +187,7 @@ export default function Profile() {
       <section className="px-3 py-4 sm:px-4">
         {activeTab === 'Videos' ? (
           videosLoading ? (
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {Array.from({ length: 4 }).map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="aspect-video bg-play-surface-elevated" />
-                  <div className="mt-2 h-4 rounded bg-play-surface-elevated" />
-                </div>
-              ))}
-            </div>
+            <LoadingSpinner layout="section" />
           ) : (
             <ProfileVideosTab
               videos={channelVideos}
@@ -204,14 +198,7 @@ export default function Profile() {
         ) : null}
         {activeTab === 'Playlist' ? (
           playlistsLoading ? (
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="animate-pulse">
-                  <div className="aspect-video bg-play-surface-elevated" />
-                  <div className="mt-3 h-5 w-2/3 rounded bg-play-surface-elevated" />
-                </div>
-              ))}
-            </div>
+            <LoadingSpinner layout="section" />
           ) : playlistsError ? (
             <p className="py-10 text-center text-play-muted">{playlistsError}</p>
           ) : (
@@ -220,11 +207,7 @@ export default function Profile() {
         ) : null}
         {activeTab === 'Tweets' ? (
           tweetsLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <div key={index} className="h-16 animate-pulse bg-play-surface-elevated" />
-              ))}
-            </div>
+            <LoadingSpinner layout="section" />
           ) : tweetsError ? (
             <p className="py-10 text-center text-play-muted">{tweetsError}</p>
           ) : (

@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { loginUser } from '../api/auth.api.js'
 import { useAuth } from '../context/AuthContext.jsx'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 /** Layout only — no auth or API wiring. */
 export default function Login() {
@@ -131,7 +132,9 @@ export default function Login() {
           </Link>
         </div>
 
-        <PlayPrimaryButton>Sign in</PlayPrimaryButton>
+        <PlayPrimaryButton disabled={loading}>
+          {loading ? <LoadingSpinner layout="inline" /> : 'Sign in'}
+        </PlayPrimaryButton>
 
         <p className="text-center text-sm text-play-muted">
           No account?{' '}

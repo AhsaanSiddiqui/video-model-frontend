@@ -6,6 +6,7 @@ import { PlayPrimaryButton } from '../components/auth/PlayPrimaryButton.jsx'
 import { useState } from 'react'
 import { registerUser } from '../api/auth.api.js'
 import { useNavigate } from 'react-router-dom'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 /** Layout only — no registration or API wiring. */
 export default function Signup() {
@@ -124,7 +125,14 @@ export default function Signup() {
         <PlayFileField label="Profile photo*" id="signup-avatar" name="avatar" value={fields.avatar} onChange={handleInputChange} />
 
         <PlayPrimaryButton type="submit" disabled={loading}>
-          {loading ? 'Creating account...' : 'Sign up'}
+          {loading ? (
+            <span className="inline-flex items-center justify-center gap-2">
+              <LoadingSpinner layout="inline" />
+              Creating account...
+            </span>
+          ) : (
+            'Sign up'
+          )}
         </PlayPrimaryButton>
 
         <p className="text-center text-sm text-play-muted">

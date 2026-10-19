@@ -6,6 +6,7 @@ import { fetchVideos } from '../api/video.api.js'
 import { mapVideoToCard } from '../utils/videoFormat.js'
 import { ProfileHeader } from '../components/profile/ProfileHeader.jsx'
 import { ProfileVideosTab } from '../components/profile/ProfileVideosTab.jsx'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 export default function Channel() {
   const { username } = useParams()
@@ -67,14 +68,7 @@ export default function Channel() {
     loadChannel()
   }, [loadChannel])
 
-  if (loading) {
-    return (
-      <div className="mx-auto max-w-[1920px] animate-pulse px-4 py-8">
-        <div className="h-32 rounded-sm bg-play-surface-elevated" />
-        <div className="mt-6 h-24 w-24 rounded-full bg-play-surface-elevated" />
-      </div>
-    )
-  }
+  if (loading) return <LoadingSpinner />
 
   if (error || !profile) {
     return (

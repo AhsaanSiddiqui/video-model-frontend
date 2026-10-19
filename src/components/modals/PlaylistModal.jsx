@@ -6,6 +6,7 @@ import {
   fetchUserPlaylists,
   removeVideoFromPlaylist,
 } from '../../api/playlist.api.js'
+import { LoadingSpinner } from '../Loader.jsx'
 
 function playlistHasVideo(playlist, videoId) {
   return (playlist.videos ?? []).some((v) => String(v?._id ?? v) === String(videoId))
@@ -154,11 +155,7 @@ function PlaylistModalContent({ videoId, onClose }) {
         </div>
 
         {loading ? (
-          <ul className="mt-8 space-y-4">
-            {Array.from({ length: 3 }).map((_, index) => (
-              <li key={index} className="h-5 w-2/3 animate-pulse rounded bg-play-surface-elevated" />
-            ))}
-          </ul>
+          <LoadingSpinner layout="section" />
         ) : playlists.length ? (
           <ul className="mt-8 max-h-64 space-y-4 overflow-y-auto">
             {playlists.map((playlist) => (

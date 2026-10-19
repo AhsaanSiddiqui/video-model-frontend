@@ -16,6 +16,7 @@ import { toggleCommentLike, toggleVideoDislike, toggleVideoLike } from '../api/l
 import { toggleSubscription } from '../api/subscription.api.js'
 import { useAuth } from '../context/AuthContext.jsx'
 import { formatTimeAgo, formatViews, mapVideoToCard } from '../utils/videoFormat.js'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 const DEFAULT_AVATAR = 'https://i.pravatar.cc/96?u=play'
 const COMMENTS_PER_PAGE = 10
@@ -267,17 +268,7 @@ export default function VideoDetails() {
     )
   }
 
-  if (loading) {
-    return (
-      <div className="mx-auto flex w-full max-w-[1920px] animate-pulse flex-col gap-8 lg:flex-row">
-        <div className="min-w-0 flex-1 space-y-6">
-          <div className="aspect-video w-full rounded-2xl bg-play-surface-elevated" />
-          <div className="h-40 rounded-2xl bg-play-surface-elevated" />
-        </div>
-        <div className="h-96 w-full shrink-0 rounded-2xl bg-play-surface-elevated lg:w-[min(100%,420px)] xl:w-[440px]" />
-      </div>
-    )
-  }
+  if (loading) return <LoadingSpinner />
 
   if (error || !video) {
     return (

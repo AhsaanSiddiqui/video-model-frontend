@@ -3,7 +3,6 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
-import { LoadingBar } from './components/LoadingBar.jsx'
 import { AuthProvider } from './context/AuthContext.jsx'
 
 createRoot(document.getElementById('root')).render(
@@ -11,7 +10,6 @@ createRoot(document.getElementById('root')).render(
     <div className="h-full min-h-0">
       <BrowserRouter>
         <AuthProvider>
-          <LoadingBar />
           <App />
         </AuthProvider>
       </BrowserRouter>

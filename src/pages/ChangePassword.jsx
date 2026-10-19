@@ -4,6 +4,7 @@ import { useAuth } from '../context/AuthContext.jsx'
 import { PlayTextField } from '../components/auth/PlayTextField.jsx'
 import { PlayPrimaryButton } from '../components/auth/PlayPrimaryButton.jsx'
 import { changePassword } from '../api/auth.api.js'
+import { LoadingSpinner } from '../components/Loader.jsx'
 
 export default function ChangePassword() {
   const { isAuthenticated } = useAuth()
@@ -103,7 +104,14 @@ export default function ChangePassword() {
         />
 
         <PlayPrimaryButton disabled={loading}>
-          {loading ? 'Updating…' : 'Update password'}
+          {loading ? (
+            <span className="inline-flex items-center justify-center gap-2">
+              <LoadingSpinner layout="inline" />
+              Updating…
+            </span>
+          ) : (
+            'Update password'
+          )}
         </PlayPrimaryButton>
 
         <p className="text-center text-sm text-play-muted">

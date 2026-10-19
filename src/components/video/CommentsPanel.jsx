@@ -6,6 +6,7 @@ import {
   IconThumbsUp,
   IconTrash,
 } from '../icons/OutlineIcons.jsx'
+import { LoadingSpinner } from '../Loader.jsx'
 
 export function CommentsPanel({
   comments,
@@ -71,10 +72,12 @@ export function CommentsPanel({
 
       {error ? (
         <p className="mt-6 text-sm text-red-400">{error}</p>
-      ) : !comments.items.length && !loading ? (
+      ) : loading ? (
+        <LoadingSpinner layout="section" />
+      ) : !comments.items.length ? (
         <p className="mt-6 text-sm text-play-muted">No comments yet. Be the first to comment.</p>
       ) : (
-        <ul className={`mt-6 space-y-6 ${loading ? 'opacity-60' : ''}`}>
+        <ul className="mt-6 space-y-6">
           {comments.items.map((c) => (
             <CommentItem
               key={c.id}
