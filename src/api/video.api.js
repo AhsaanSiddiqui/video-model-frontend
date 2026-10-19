@@ -86,3 +86,52 @@ export async function uploadVideo({ title, description, videoFile, thumbnail }) 
     }
   }
 }
+
+export async function updateVideo(videoId, { title, description, thumbnail } = {}) {
+  try {
+    const formData = new FormData()
+    if (title != null) formData.append('title', title)
+    if (description != null) formData.append('description', description)
+    if (thumbnail instanceof File) formData.append('thumbnail', thumbnail)
+
+    const response = await api.patch(`/videos/${videoId}`, formData)
+    return {
+      success: true,
+      video: unwrapPayload(response),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to update video',
+      video: null,
+    }
+  }
+}
+
+export async function deleteVideo(videoId) {
+  try {
+    await api.delete(`/videos/${videoId}`)
+    return { success: true }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to delete video',
+    }
+  }
+}
+
+export async function togglePublishVideo(videoId) {
+  try {
+    const response = await api.patch(`/videos/toggle/publish/${videoId}`)
+    return {
+      success: true,
+      video: unwrapPayload(response),
+    }
+  } catch (error) {
+    return {
+      success: false,
+      message: error.response?.data?.message || 'Failed to update publish status',
+      video: null,
+    }
+  }
+}

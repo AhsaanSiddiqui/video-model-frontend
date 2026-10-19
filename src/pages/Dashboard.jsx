@@ -1,48 +1,29 @@
-import { useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { UploadAndAttachFilesModal } from '../components/modals/UploadAndAttachFilesModal'
+import { fetchDashboardStats, fetchDashboardVideos } from '../api/dashboard.api.js'
+import { deleteVideo, togglePublishVideo, updateVideo } from '../api/video.api.js'
+import { UploadVideoModal } from '../components/modals/UploadVideoModal'
 import { EditVideoModal } from '../components/modals/EditVideoModal'
 import { DeleteVideoModal } from '../components/modals/DeleteVideoModal'
 import { IconEye, IconHeart, IconPencil, IconTrash, IconUserCheck } from '../components/icons/OutlineIcons.jsx'
 
-const STATS = {
-  views: 221_234,
-  followers: 4_053,
-  likes: 63_021,
+function formatCount(n) {
+  return Number(n || 0).toLocaleString('en-US')
 }
 
-const INITIAL_ROWS = [
-  {
-    id: '1',
-    title: 'Cardi B - WAP ft. Megan Thee Sta…',
-    thumb: 'https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=80&h=80&fit=crop',
-    published: true,
-    likes: 367,
-    dislikes: 4767,
-    date: '9/23/16',
-  },
-  {
-    id: '2',
-    title: 'H.E.R. - Damage (Official Video)',
-    thumb: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=80&h=80&fit=crop',
-    published: false,
-    likes: 1204,
-    dislikes: 89,
-    date: '10/21/20',
-  },
-  {
-    id: '3',
-    title: 'Summer Walker - Playing Games',
-    thumb: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=80&h=80&fit=crop',
-    published: true,
-    likes: 8921,
-    dislikes: 312,
-    date: '8/2/19',
-  },
-]
-
-function formatCount(n) {
-  return n.toLocaleString('en-US')
+function mapRow(video) {
+  const created = video?.createdAt ? new Date(video.createdAt) : null
+  return {
+    id: video?._id,
+    title: video?.title || 'Untitled',
+    description: video?.description || '',
+    thumb: video?.thumbnail || '',
+    published: Boolean(video?.isPublished),
+    likes: video?.likes ?? 0,
+    dislikes: video?.dislikes ?? 0,
+    date: created && !Number.isNaN(created.getTime()) ? created.toLocaleDateString('en-US') : '',
+  }
 }
 
 function StatCard({ label, value, icon: Icon }) {
@@ -59,7 +40,7 @@ function StatCard({ label, value, icon: Icon }) {
   )
 }
 
-function ToggleSwitch({ checked, onChange, id }) {
+function ToggleSwitch({ checked, onChange, id, disabled }) {
   return (
     <button
       type="button"
@@ -67,9 +48,10 @@ function ToggleSwitch({ checked, onChange, id }) {
       aria-checked={checked}
       aria-label={checked ? 'Video visible' : 'Video hidden'}
       id={id}
+      disabled={disabled}
       onClick={() => onChange(!checked)}
       className={[
-        'relative inline-flex h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring focus-visible:ring-offset-2 focus-visible:ring-offset-play-canvas',
+        'relative inline-flex h-6 w-11 shrink-0 rounded-full border transition-colors focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring focus-visible:ring-offset-2 focus-visible:ring-offset-play-canvas disabled:opacity-60',
         checked ? 'border-play-primary bg-play-primary' : 'border-play-border bg-play-surface-elevated',
       ].join(' ')}
     >
@@ -84,11 +66,15 @@ function ToggleSwitch({ checked, onChange, id }) {
 }
 
 export default function Dashboard() {
-  const { user } = useAuth()
+  const { user, isAuthenticated } = useAuth()
   const [uploadOpen, setUploadOpen] = useState(false)
   const [editVideo, setEditVideo] = useState(null)
-  const [deleteVideo, setDeleteVideo] = useState(null)
-  const [rows, setRows] = useState(INITIAL_ROWS)
+  const [deleteTarget, setDeleteTarget] = useState(null)
+  const [rows, setRows] = useState([])
+  const [stats, setStats] = useState({ views: 0, followers: 0, likes: 0 })
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+  const [pendingId, setPendingId] = useState(null)
 
   const firstName = useMemo(() => {
     const name = user?.fullName?.trim()
@@ -97,24 +83,86 @@ export default function Dashboard() {
     return 'Olivia'
   }, [user])
 
-  function handleEditFinish(updates) {
-    if (!editVideo) return
+  const loadDashboard = useCallback(async () => {
+    setLoading(true)
+    setError('')
+    const [statsResult, videosResult] = await Promise.all([fetchDashboardStats(), fetchDashboardVideos()])
+
+    if (!statsResult.success && !videosResult.success) {
+      setError(statsResult.message || videosResult.message)
+    } else if (!videosResult.success) {
+      setError(videosResult.message)
+    }
+
+    setStats(statsResult.stats)
+    setRows(videosResult.videos.map(mapRow))
+    setLoading(false)
+  }, [])
+
+  useEffect(() => {
+    if (!isAuthenticated) return
+    loadDashboard()
+  }, [isAuthenticated, loadDashboard])
+
+  async function handleEditFinish(updates) {
+    if (!editVideo) return { success: false, message: 'No video selected' }
+    const result = await updateVideo(editVideo.id, {
+      title: updates.title,
+      description: updates.description,
+      thumbnail: updates.thumbnailFile,
+    })
+    if (!result.success) return result
+
+    const next = result.video ? mapRow({ ...result.video, likes: editVideo.likes, dislikes: editVideo.dislikes }) : null
     setRows((prev) =>
       prev.map((row) =>
         row.id === editVideo.id
-          ? { ...row, title: updates.title || row.title, description: updates.description, thumb: updates.thumbnail || row.thumb }
+          ? {
+              ...row,
+              ...(next || {}),
+              title: updates.title || row.title,
+              description: updates.description ?? row.description,
+              thumb: next?.thumb || row.thumb,
+            }
           : row,
       ),
     )
+    return result
   }
 
-  function handleDeleteConfirm() {
-    if (!deleteVideo) return
-    setRows((prev) => prev.filter((row) => row.id !== deleteVideo.id))
+  async function handleDeleteConfirm() {
+    if (!deleteTarget) return
+    const result = await deleteVideo(deleteTarget.id)
+    if (!result.success) {
+      setError(result.message)
+      return
+    }
+    setRows((prev) => prev.filter((row) => row.id !== deleteTarget.id))
+    fetchDashboardStats().then((statsResult) => {
+      if (statsResult.success) setStats(statsResult.stats)
+    })
   }
 
-  function setPublished(id, published) {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, published } : r)))
+  async function setPublished(id, published) {
+    const previous = rows.find((row) => row.id === id)
+    if (!previous || pendingId) return
+
+    setPendingId(id)
+    setError('')
+    setRows((prev) => prev.map((row) => (row.id === id ? { ...row, published } : row)))
+
+    const result = await togglePublishVideo(id)
+    if (!result.success) {
+      setRows((prev) => prev.map((row) => (row.id === id ? previous : row)))
+      setError(result.message)
+    } else if (result.video && typeof result.video.isPublished === 'boolean') {
+      setRows((prev) => prev.map((row) => (row.id === id ? { ...row, published: result.video.isPublished } : row)))
+    }
+    setPendingId(null)
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />
   }
 
   return (
@@ -134,10 +182,12 @@ export default function Dashboard() {
         </button>
       </div>
 
+      {error ? <p className="text-sm text-red-400">{error}</p> : null}
+
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard label="Total Views" value={STATS.views} icon={IconEye} />
-        <StatCard label="Total Followers" value={STATS.followers} icon={IconUserCheck} />
-        <StatCard label="Total Likes" value={STATS.likes} icon={IconHeart} />
+        <StatCard label="Total Views" value={stats.views} icon={IconEye} />
+        <StatCard label="Total Followers" value={stats.followers} icon={IconUserCheck} />
+        <StatCard label="Total Likes" value={stats.likes} icon={IconHeart} />
       </div>
 
       <div className="min-h-0 flex-1 overflow-hidden rounded-lg border border-play-border">
@@ -166,68 +216,83 @@ export default function Dashboard() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr key={row.id} className="border-b border-play-border last:border-b-0">
-                  <td className="px-3 py-3 align-middle">
-                    <ToggleSwitch
-                      id={`vis-${row.id}`}
-                      checked={row.published}
-                      onChange={(v) => setPublished(row.id, v)}
-                    />
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <span
-                      className={[
-                        'inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium',
-                        row.published
-                          ? 'border-emerald-500/80 text-emerald-400'
-                          : 'border-amber-500/80 text-amber-400',
-                      ].join(' ')}
-                    >
-                      {row.published ? 'Published' : 'Unpublished'}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3 align-middle">
-                    <div className="flex items-center gap-3">
-                      <img src={row.thumb} alt="" className="size-10 shrink-0 rounded-full object-cover" width={40} height={40} />
-                      <span className="line-clamp-2 font-medium">{row.title}</span>
-                    </div>
-                  </td>
-                  <td className="align-middle bg-white p-0">
-                    <div className="flex flex-col gap-0.5 px-3 py-3 text-xs sm:text-sm">
-                      <span className="font-medium text-emerald-600">{formatCount(row.likes)} likes</span>
-                      <span className="font-medium text-red-600">{formatCount(row.dislikes)} Dislikes</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-3 align-middle text-play-muted">{row.date}</td>
-                  <td className="px-3 py-3 align-middle">
-                    <div className="flex items-center justify-end gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setDeleteVideo(row)}
-                        className="rounded p-1.5 text-play-foreground transition hover:bg-play-surface-elevated focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring"
-                        aria-label={`Delete ${row.title}`}
-                      >
-                        <IconTrash />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setEditVideo(row)}
-                        className="rounded p-1.5 text-play-foreground transition hover:bg-play-surface-elevated focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring"
-                        aria-label={`Edit ${row.title}`}
-                      >
-                        <IconPencil />
-                      </button>
-                    </div>
+              {loading ? (
+                <tr>
+                  <td colSpan={6} className="px-3 py-10 text-center text-play-muted">
+                    Loading your videos…
                   </td>
                 </tr>
-              ))}
+              ) : rows.length ? (
+                rows.map((row) => (
+                  <tr key={row.id} className="border-b border-play-border last:border-b-0">
+                    <td className="px-3 py-3 align-middle">
+                      <ToggleSwitch
+                        id={`vis-${row.id}`}
+                        checked={row.published}
+                        disabled={pendingId === row.id}
+                        onChange={(value) => setPublished(row.id, value)}
+                      />
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <span
+                        className={[
+                          'inline-flex rounded-full border px-2.5 py-0.5 text-xs font-medium',
+                          row.published
+                            ? 'border-emerald-500/80 text-emerald-400'
+                            : 'border-amber-500/80 text-amber-400',
+                        ].join(' ')}
+                      >
+                        {row.published ? 'Published' : 'Unpublished'}
+                      </span>
+                    </td>
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center gap-3">
+                        <img src={row.thumb} alt="" className="size-10 shrink-0 rounded-full object-cover" width={40} height={40} />
+                        <span className="line-clamp-2 font-medium">{row.title}</span>
+                      </div>
+                    </td>
+                    <td className="align-middle bg-white p-0">
+                      <div className="flex flex-col gap-0.5 px-3 py-3 text-xs sm:text-sm">
+                        <span className="font-medium text-emerald-600">{formatCount(row.likes)} likes</span>
+                        <span className="font-medium text-red-600">{formatCount(row.dislikes)} Dislikes</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-3 align-middle text-play-muted">{row.date}</td>
+                    <td className="px-3 py-3 align-middle">
+                      <div className="flex items-center justify-end gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(row)}
+                          className="rounded p-1.5 text-play-foreground transition hover:bg-play-surface-elevated focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring"
+                          aria-label={`Delete ${row.title}`}
+                        >
+                          <IconTrash />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditVideo(row)}
+                          className="rounded p-1.5 text-play-foreground transition hover:bg-play-surface-elevated focus-visible:outline focus-visible:ring-2 focus-visible:ring-play-ring"
+                          aria-label={`Edit ${row.title}`}
+                        >
+                          <IconPencil />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6} className="px-3 py-10 text-center text-play-muted">
+                    No videos uploaded yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
       </div>
 
-      <UploadAndAttachFilesModal open={uploadOpen} onClose={() => setUploadOpen(false)} />
+      <UploadVideoModal open={uploadOpen} onClose={() => setUploadOpen(false)} onSuccess={loadDashboard} />
       <EditVideoModal
         open={!!editVideo}
         video={editVideo}
@@ -235,9 +300,9 @@ export default function Dashboard() {
         onFinish={handleEditFinish}
       />
       <DeleteVideoModal
-        open={!!deleteVideo}
-        videoTitle={deleteVideo?.title}
-        onClose={() => setDeleteVideo(null)}
+        open={!!deleteTarget}
+        videoTitle={deleteTarget?.title}
+        onClose={() => setDeleteTarget(null)}
         onConfirm={handleDeleteConfirm}
       />
     </div>

@@ -42,6 +42,9 @@ export function EditVideoModal({ open, onClose, video, onFinish }) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [thumbnail, setThumbnail] = useState('')
+  const [thumbnailFile, setThumbnailFile] = useState(null)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState('')
 
   useModalEscape(open, onClose)
 
@@ -49,7 +52,10 @@ export function EditVideoModal({ open, onClose, video, onFinish }) {
     if (!open) return
     setTitle(video?.title ?? '')
     setDescription(video?.description ?? '')
-    setThumbnail(video?.thumb ?? '')
+    setThumbnail(video?.thumb || video?.thumbnail || '')
+    setThumbnailFile(null)
+    setError('')
+    setSaving(false)
   }, [open, video])
 
   if (!open) return null
@@ -91,7 +97,18 @@ export function EditVideoModal({ open, onClose, video, onFinish }) {
           </div>
 
           <div className="min-w-0 flex-1">
-            <input ref={thumbInputRef} type="file" accept="image/*" className="sr-only" />
+            <input
+              ref={thumbInputRef}
+              type="file"
+              accept="image/*"
+              className="sr-only"
+              onChange={(event) => {
+                const file = event.target.files?.[0]
+                if (!file) return
+                setThumbnailFile(file)
+                setThumbnail(URL.createObjectURL(file))
+              }}
+            />
             <button
               type="button"
               onClick={() => thumbInputRef.current?.click()}
@@ -137,6 +154,8 @@ export function EditVideoModal({ open, onClose, video, onFinish }) {
           </div>
         </div>
 
+        {error ? <p className="mt-4 text-sm text-red-400">{error}</p> : null}
+
         <div className="mt-6 grid grid-cols-2 gap-3">
           <button
             type="button"
@@ -147,13 +166,22 @@ export function EditVideoModal({ open, onClose, video, onFinish }) {
           </button>
           <button
             type="button"
-            onClick={() => {
-              onFinish?.({ title, description, thumbnail })
+            disabled={saving}
+            onClick={async () => {
+              setSaving(true)
+              setError('')
+              const result = await onFinish?.({ title, description, thumbnailFile })
+              setSaving(false)
+              if (result === false) return
+              if (result && result.success === false) {
+                setError(result.message || 'Could not save video')
+                return
+              }
               onClose()
             }}
-            className="rounded-md bg-play-primary px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-play-primary-hover"
+            className="rounded-md bg-play-primary px-4 py-2.5 text-sm font-semibold text-black transition hover:bg-play-primary-hover disabled:opacity-60"
           >
-            Finish
+            {saving ? 'Saving…' : 'Finish'}
           </button>
         </div>
       </section>
