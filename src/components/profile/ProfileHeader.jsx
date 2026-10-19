@@ -1,12 +1,26 @@
+import { Link } from 'react-router-dom'
 import { useState } from 'react'
 import { IconUserPlus } from '../icons/OutlineIcons.jsx'
 import { CropHeaderImageModal } from '../modals/CropHeaderImageModal.jsx'
 
-export function ProfileHeader({ profile, isOwner }) {
+const DEFAULT_BANNER = 'linear-gradient(to right, #d946ef, #bae6fd, #22d3ee)'
+
+function isImageUrl(value) {
+  return typeof value === 'string' && /^https?:\/\//i.test(value.trim())
+}
+
+export function ProfileHeader({
+  profile,
+  isOwner,
+  onToggleSubscribe,
+  subscribePending = false,
+}) {
   const [cropOpen, setCropOpen] = useState(false)
-  const [bannerStyle, setBannerStyle] = useState({
-    background: 'linear-gradient(to right, #d946ef, #bae6fd, #22d3ee)',
-  })
+  const [bannerStyle, setBannerStyle] = useState(null)
+  const cover = isImageUrl(profile.coverImage) ? profile.coverImage.trim() : ''
+  const banner = bannerStyle ?? (cover
+    ? { backgroundImage: `url(${cover})`, backgroundSize: 'cover', backgroundPosition: 'center' }
+    : { background: DEFAULT_BANNER })
 
   return (
     <>
@@ -14,10 +28,10 @@ export function ProfileHeader({ profile, isOwner }) {
         type="button"
         onClick={() => isOwner && setCropOpen(true)}
         className={[
-          'h-32 w-full rounded-sm',
+          'h-32 w-full rounded-sm bg-play-surface-elevated',
           isOwner ? 'cursor-pointer transition hover:opacity-90' : 'cursor-default',
         ].join(' ')}
-        style={bannerStyle}
+        style={banner}
         aria-label={isOwner ? 'Edit header image' : undefined}
         disabled={!isOwner}
       />
@@ -33,25 +47,27 @@ export function ProfileHeader({ profile, isOwner }) {
               <h1 className="text-2xl font-bold tracking-tight text-play-foreground">{profile.fullName}</h1>
               <p className="text-lg text-play-foreground">@{profile.username}</p>
               <p className="mt-1 text-md text-play-muted">
-                {profile.subscribers} • {profile.subscribed}
+                {profile.subscribers} Subscribers • {profile.subscribed} Subscribed
               </p>
             </div>
           </div>
           {isOwner ? (
-            <button
-              type="button"
-              className="inline-flex items-center justify-center gap-2 self-start rounded-play-button bg-play-primary px-4 py-2 text-md font-medium text-play-primary-foreground hover:bg-play-primary-hover sm:self-auto"
+            <Link
+              to="/settings"
+              className="inline-flex items-center justify-center gap-2 self-start rounded-play-button bg-play-primary px-4 py-2 text-md font-medium text-play-primary-foreground no-underline hover:bg-play-primary-hover sm:self-auto"
             >
               <span aria-hidden>✎</span>
               Edit
-            </button>
+            </Link>
           ) : (
             <button
               type="button"
-              className="inline-flex items-center justify-center gap-2 self-start rounded-play-button bg-play-primary px-4 py-2 text-md font-medium text-play-primary-foreground hover:bg-play-primary-hover sm:self-auto"
+              onClick={onToggleSubscribe}
+              disabled={subscribePending || !onToggleSubscribe}
+              className="inline-flex items-center justify-center gap-2 self-start rounded-play-button bg-play-primary px-4 py-2 text-md font-medium text-play-primary-foreground hover:bg-play-primary-hover disabled:opacity-60 sm:self-auto"
             >
               <IconUserPlus className="h-4! w-4!" />
-              Follow
+              {subscribePending ? 'Updating…' : profile.isSubscribed ? 'Subscribed' : 'Follow'}
             </button>
           )}
         </div>

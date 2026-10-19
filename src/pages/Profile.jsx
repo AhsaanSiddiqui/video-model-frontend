@@ -2,6 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { fetchVideos } from '../api/video.api.js'
+import { fetchChannelProfile } from '../api/user.api.js'
+import { fetchSubscribedChannels, toggleSubscription } from '../api/subscription.api.js'
 import { fetchUserPlaylists, fetchPlaylistById } from '../api/playlist.api.js'
 import { createTweet, deleteTweet, fetchUserTweets, updateTweet } from '../api/tweet.api.js'
 import { toggleTweetLike } from '../api/like.api.js'
@@ -13,7 +15,7 @@ import { ProfilePlaylistsTab } from '../components/profile/ProfilePlaylistsTab.j
 import { ProfileTweetsTab } from '../components/profile/ProfileTweetsTab.jsx'
 import { ProfileFollowingTab } from '../components/profile/ProfileFollowingTab.jsx'
 import { UploadVideoModal } from '../components/modals/UploadVideoModal.jsx'
-import { PROFILE_TABS, profileFollowing } from '../data/profileMock.js'
+import { PROFILE_TABS } from '../data/profileMock.js'
 import { LoadingSpinner } from '../components/Loader.jsx'
 
 function mapTweet(tweet) {
@@ -41,6 +43,12 @@ export default function Profile() {
   const [tweets, setTweets] = useState([])
   const [tweetsLoading, setTweetsLoading] = useState(false)
   const [tweetsError, setTweetsError] = useState('')
+  const [counts, setCounts] = useState({ subscribers: 0, subscribed: 0 })
+  const [coverImage, setCoverImage] = useState('')
+  const [following, setFollowing] = useState([])
+  const [followingLoading, setFollowingLoading] = useState(false)
+  const [followingError, setFollowingError] = useState('')
+  const [pendingFollowId, setPendingFollowId] = useState(null)
 
   const profile = useMemo(
     () => ({
@@ -50,10 +58,11 @@ export default function Profile() {
         typeof user?.avatar === 'string' && /^https?:\/\//i.test(user.avatar.trim())
           ? user.avatar.trim()
           : 'https://i.pravatar.cc/200?img=19',
-      subscribers: '600K Subscribers',
-      subscribed: '220 Subscribed',
+      subscribers: counts.subscribers,
+      subscribed: counts.subscribed,
+      coverImage,
     }),
-    [user],
+    [user, counts, coverImage],
   )
 
   const isOwner =
@@ -160,6 +169,60 @@ export default function Profile() {
     return result
   }
 
+  const loadFollowing = useCallback(async () => {
+    if (!user?._id) {
+      setFollowing([])
+      setFollowingLoading(false)
+      return
+    }
+
+    setFollowingLoading(true)
+    setFollowingError('')
+    const result = await fetchSubscribedChannels(user._id)
+    if (!result.success) {
+      setFollowing([])
+      setFollowingError(result.message)
+    } else {
+      setFollowing(result.channels)
+      setCounts((prev) => ({ ...prev, subscribed: result.channels.length }))
+    }
+    setFollowingLoading(false)
+  }, [user?._id])
+
+  async function handleUnfollow(channelId) {
+    if (pendingFollowId) return
+    setPendingFollowId(channelId)
+    setFollowingError('')
+    const result = await toggleSubscription(channelId)
+    if (!result.success) {
+      setFollowingError(result.message)
+    } else {
+      setFollowing((prev) => prev.filter((channel) => channel._id !== channelId))
+      setCounts((prev) => ({ ...prev, subscribed: Math.max(0, prev.subscribed - 1) }))
+    }
+    setPendingFollowId(null)
+  }
+
+  useEffect(() => {
+    if (!user?.username) return
+    let cancelled = false
+
+    async function loadCounts() {
+      const result = await fetchChannelProfile(user.username)
+      if (cancelled || !result.success || !result.channel) return
+      setCounts({
+        subscribers: result.channel.subscriberCount ?? 0,
+        subscribed: result.channel.channelsSubscribedToCount ?? 0,
+      })
+      setCoverImage(result.channel.coverImage || '')
+    }
+
+    loadCounts()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.username])
+
   useEffect(() => {
     if (!isAuthenticated || !user) return
     if (activeTab === 'Videos') {
@@ -171,7 +234,10 @@ export default function Profile() {
     if (activeTab === 'Tweets') {
       loadTweets()
     }
-  }, [activeTab, isAuthenticated, user, loadChannelVideos, loadPlaylists, loadTweets])
+    if (activeTab === 'Following') {
+      loadFollowing()
+    }
+  }, [activeTab, isAuthenticated, user, loadChannelVideos, loadPlaylists, loadTweets, loadFollowing])
 
   if (!isAuthenticated || !user) {
     return <Navigate to="/login" replace />
@@ -221,7 +287,15 @@ export default function Profile() {
             />
           )
         ) : null}
-        {activeTab === 'Following' ? <ProfileFollowingTab following={profileFollowing} /> : null}
+        {activeTab === 'Following' ? (
+          <ProfileFollowingTab
+            channels={following}
+            loading={followingLoading}
+            error={followingError}
+            pendingId={pendingFollowId}
+            onToggle={handleUnfollow}
+          />
+        ) : null}
       </section>
 
       <UploadVideoModal

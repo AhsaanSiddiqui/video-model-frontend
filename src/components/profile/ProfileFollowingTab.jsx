@@ -1,6 +1,21 @@
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { IconSearch } from '../icons/OutlineIcons.jsx'
+import { LoadingSpinner } from '../Loader.jsx'
 
-export function ProfileFollowingTab({ following }) {
+const DEFAULT_AVATAR = 'https://i.pravatar.cc/80?u=play'
+
+export function ProfileFollowingTab({ channels, loading, error, pendingId, onToggle }) {
+  const [query, setQuery] = useState('')
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase()
+    if (!term) return channels
+    return channels.filter((channel) => {
+      const name = `${channel.fullName || ''} ${channel.username || ''}`.toLowerCase()
+      return name.includes(term)
+    })
+  }, [channels, query])
+
   return (
     <div>
       <label className="mb-4 block">
@@ -10,38 +25,55 @@ export function ProfileFollowingTab({ following }) {
           </span>
           <input
             type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
             placeholder="Search"
             className="w-full border border-play-border bg-transparent py-2.5 pl-10 pr-4 text-lg text-play-foreground placeholder:text-play-muted outline-none focus-visible:ring-1 focus-visible:ring-play-ring"
           />
         </span>
       </label>
 
-      <ul className="space-y-3">
-        {following.map((item) => (
-          <li key={item.id} className="flex items-center gap-3">
-            <img
-              src={`https://i.pravatar.cc/64?img=${15 + Number(item.id.slice(1))}`}
-              alt=""
-              className="h-10 w-10 rounded-full object-cover"
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-md font-semibold text-play-foreground">{item.name}</p>
-              <p className="text-sm text-play-muted">{item.followers}</p>
-            </div>
-            <button
-              type="button"
-              className={[
-                'min-w-28 rounded-play-button px-3 py-1.5 text-sm font-semibold',
-                item.subscribed
-                  ? 'border border-play-border bg-white text-black'
-                  : 'bg-play-primary text-play-primary-foreground hover:bg-play-primary-hover',
-              ].join(' ')}
-            >
-              {item.subscribed ? 'Subscribed' : 'Subscribe'}
-            </button>
-          </li>
-        ))}
-      </ul>
+      {error ? <p className="mb-4 text-sm text-red-400">{error}</p> : null}
+
+      {loading ? (
+        <LoadingSpinner layout="section" />
+      ) : !visible.length ? (
+        <p className="py-10 text-center text-play-muted">
+          {channels.length ? 'No channels match that search.' : 'You are not following anyone yet.'}
+        </p>
+      ) : (
+        <ul className="space-y-3">
+          {visible.map((channel) => {
+            const avatar =
+              typeof channel.avatar === 'string' && channel.avatar.trim()
+                ? channel.avatar.trim()
+                : DEFAULT_AVATAR
+            return (
+              <li key={channel._id} className="flex items-center gap-3">
+                <Link to={channel.username ? `/c/${channel.username}` : '#'} className="flex min-w-0 flex-1 items-center gap-3 no-underline">
+                  <img src={avatar} alt="" className="h-10 w-10 rounded-full object-cover" />
+                  <div className="min-w-0">
+                    <p className="truncate text-md font-semibold text-play-foreground">
+                      {channel.fullName || channel.username}
+                    </p>
+                    {channel.username ? (
+                      <p className="truncate text-sm text-play-muted">@{channel.username}</p>
+                    ) : null}
+                  </div>
+                </Link>
+                <button
+                  type="button"
+                  disabled={pendingId === channel._id}
+                  onClick={() => onToggle(channel._id)}
+                  className="min-w-28 rounded-play-button border border-play-border bg-white px-3 py-1.5 text-sm font-semibold text-black disabled:opacity-60"
+                >
+                  {pendingId === channel._id ? 'Updating…' : 'Subscribed'}
+                </button>
+              </li>
+            )
+          })}
+        </ul>
+      )}
     </div>
   )
 }

@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext.jsx'
 import { fetchChannelProfile } from '../api/user.api.js'
 import { fetchVideos } from '../api/video.api.js'
+import { toggleSubscription } from '../api/subscription.api.js'
 import { mapVideoToCard } from '../utils/videoFormat.js'
 import { ProfileHeader } from '../components/profile/ProfileHeader.jsx'
 import { ProfileVideosTab } from '../components/profile/ProfileVideosTab.jsx'
@@ -15,6 +16,8 @@ export default function Channel() {
   const [videos, setVideos] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [subscribePending, setSubscribePending] = useState(false)
+  const [subscribeError, setSubscribeError] = useState('')
 
   const isOwner =
     isAuthenticated &&
@@ -32,8 +35,10 @@ export default function Channel() {
         typeof channel.avatar === 'string' && /^https?:\/\//i.test(channel.avatar.trim())
           ? channel.avatar.trim()
           : 'https://i.pravatar.cc/200?img=19',
-      subscribers: `${channel.subscriberCount ?? 0} Subscribers`,
-      subscribed: `${channel.channelsSubscribedToCount ?? 0} Subscribed`,
+      subscribers: channel.subscriberCount ?? 0,
+      subscribed: channel.channelsSubscribedToCount ?? 0,
+      isSubscribed: Boolean(channel.isSubscribed),
+      coverImage: channel.coverImage,
     }
   }, [channel, username])
 
@@ -68,6 +73,27 @@ export default function Channel() {
     loadChannel()
   }, [loadChannel])
 
+  async function handleSubscribe() {
+    if (!channel?._id || subscribePending || isOwner) return
+    setSubscribePending(true)
+    setSubscribeError('')
+    const result = await toggleSubscription(channel._id)
+    if (!result.success) {
+      setSubscribeError(result.message)
+    } else {
+      setChannel((prev) =>
+        prev
+          ? {
+              ...prev,
+              isSubscribed: !prev.isSubscribed,
+              subscriberCount: Math.max(0, (prev.subscriberCount ?? 0) + (prev.isSubscribed ? -1 : 1)),
+            }
+          : prev,
+      )
+    }
+    setSubscribePending(false)
+  }
+
   if (loading) return <LoadingSpinner />
 
   if (error || !profile) {
@@ -83,7 +109,13 @@ export default function Channel() {
 
   return (
     <div className="mx-auto max-w-[1920px]">
-      <ProfileHeader profile={profile} isOwner={isOwner} />
+      <ProfileHeader
+        profile={profile}
+        isOwner={isOwner}
+        onToggleSubscribe={handleSubscribe}
+        subscribePending={subscribePending}
+      />
+      {subscribeError ? <p className="px-4 pt-3 text-sm text-red-400">{subscribeError}</p> : null}
       <section className="px-3 py-4 sm:px-4">
         <ProfileVideosTab videos={videos} canCreate={false} />
       </section>
