@@ -89,25 +89,33 @@ export function VideoMetadataPanel({
               {video.channel.name}
             </p>
             <p className="text-sm text-play-muted">
-              {video.subscribersCount.toLocaleString()} Followers
+              {video.subscribersCount.toLocaleString()} Subscribers
             </p>
           </div>
         </Link>
-        {isOwner ? null : (
-          <button
-            type="button"
-            onClick={onToggleSubscribe}
-            disabled={subscribePending}
-            aria-pressed={video.isSubscribed}
-            className={`w-full shrink-0 rounded-play-button px-6 py-2.5 text-sm font-bold disabled:opacity-60 sm:w-auto ${
-              video.isSubscribed
-                ? 'border border-play-border-subtle bg-play-surface-elevated text-play-foreground hover:bg-play-surface-elevated/70'
-                : 'bg-play-primary text-play-primary-foreground hover:bg-play-primary-hover'
-            }`}
+        <div className="flex w-full shrink-0 gap-2 sm:w-auto">
+          {isOwner ? null : (
+            <button
+              type="button"
+              onClick={onToggleSubscribe}
+              disabled={subscribePending}
+              aria-pressed={video.isSubscribed}
+              className={`flex-1 rounded-play-button px-5 py-2.5 text-sm font-bold disabled:opacity-60 sm:flex-none ${
+                video.isSubscribed
+                  ? 'border border-play-border-subtle bg-play-surface-elevated text-play-foreground hover:bg-play-surface-elevated/70'
+                  : 'bg-play-primary text-play-primary-foreground hover:bg-play-primary-hover'
+              }`}
+            >
+              {subscribePending ? 'Updating…' : video.isSubscribed ? 'Subscribed' : 'Subscribe'}
+            </button>
+          )}
+          <Link
+            to="/subscribers"
+            className="flex flex-1 items-center justify-center rounded-play-button border border-play-border-subtle px-5 py-2.5 text-sm font-bold text-play-foreground no-underline hover:bg-play-surface-elevated sm:flex-none"
           >
-            {video.isSubscribed ? 'Following' : 'Follow'}
-          </button>
-        )}
+            Following
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6 rounded-xl border border-play-border-subtle bg-play-surface-elevated/40 p-4">
